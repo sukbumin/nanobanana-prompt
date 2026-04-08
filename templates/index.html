@@ -120,6 +120,7 @@
                     <h3><span class="step-badge">2</span>인플루언서 + 제품 합성</h3>
                     <div style="margin-bottom:10px;"><input type="text" id="compositeDetail" class="simple-input" style="padding:10px;" placeholder="추가 디테일 (예: 두 손으로 들고있는, 여러개 들고있는)" oninput="updateCompositePrompt()"></div>
                     <div class="prompt-box"><button class="btn-copy" onclick="copyText('compositePrompt')">📋 복사</button><pre id="compositePrompt">Place the snack pouch bag in the influencer's hand naturally.
+The snack bag should be larger than the person's face, prominently visible.
 Match the lighting of the product to the environment.
 Keep the hand pose natural and relaxed.
 The product should look like it belongs in the scene.</pre></div>
@@ -260,10 +261,29 @@ The product should look like it belongs in the scene.</pre></div>
         
         function updateCompositePrompt() {
             const detail = document.getElementById('compositeDetail').value.trim();
+            // 한국어 → 영어 번역
+            const translations = {
+                '과자봉지가 너무작아': 'make the snack bag much larger and more prominent',
+                '너무 작아': 'make it larger',
+                '더 크게': 'make it larger',
+                '두 손으로': 'holding with both hands',
+                '양손으로': 'holding with both hands',
+                '여러개': 'multiple products',
+                '여러 개': 'multiple products',
+                '얼굴 옆에': 'next to face',
+                '얼굴옆에': 'next to face',
+                '가슴 높이': 'at chest level',
+                '눈높이': 'at eye level'
+            };
+            let translatedDetail = detail;
+            for (const [kr, en] of Object.entries(translations)) {
+                translatedDetail = translatedDetail.replace(kr, en);
+            }
+            
             let base = selectedProduct === 'snack' 
-                ? `Place the snack pouch bag in the influencer's hand naturally.\nMatch the lighting of the product to the environment.\nKeep the hand pose natural and relaxed.\nThe product should look like it belongs in the scene.`
-                : `Place the cosmetic product in the influencer's hand naturally.\nMatch the lighting of the product to the environment.\nKeep the hand pose elegant and natural.\nThe product should look like it belongs in the scene.`;
-            if (detail) base += `\n${detail}`;
+                ? `Place the snack pouch bag in the influencer's hand naturally.\nThe snack bag should be larger than the person's face, prominently visible.\nMatch the lighting of the product to the environment.\nKeep the hand pose natural and relaxed.\nThe product should look like it belongs in the scene.`
+                : `Place the cosmetic product in the influencer's hand naturally.\nThe product should be clearly visible and prominent in the frame.\nMatch the lighting of the product to the environment.\nKeep the hand pose elegant and natural.\nThe product should look like it belongs in the scene.`;
+            if (translatedDetail) base += `\n${translatedDetail}`;
             document.getElementById('compositePrompt').textContent = base;
         }
         
