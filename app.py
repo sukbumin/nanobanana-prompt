@@ -294,3 +294,172 @@ def generate_custom():
 
 if __name__ == '__main__':
     app.run(debug=True, port=5002)
+
+# 영상 프롬프트용 발음 변환
+PRONUNCIATION_CONVERT = {
+    "웨하스": "웨'하'스",
+    "바닐라": "바'닐'라",
+    "떴다": "떠따",
+    "미쳤다": "미쳐따",
+    "떴습니다": "떠씁니다",
+    "됐다": "돼따",
+    "했다": "해따",
+    "갔다": "가따",
+    "왔다": "와따",
+    "먹었다": "머거따",
+    "봤다": "봐따"
+}
+
+# 숫자 변환 - 고유어 (개수)
+NATIVE_KOREAN_NUMBERS = {
+    "1": "한", "2": "두", "3": "세", "4": "네", "5": "다섯",
+    "6": "여섯", "7": "일곱", "8": "여덟", "9": "아홉", "10": "열"
+}
+
+# 숫자 변환 - 한자어 (측정)
+SINO_KOREAN_NUMBERS = {
+    "1": "일", "2": "이", "3": "삼", "4": "사", "5": "오",
+    "6": "육", "7": "칠", "8": "팔", "9": "구", "10": "십",
+    "100": "백", "1000": "천", "10000": "만"
+}
+
+def convert_pronunciation(text):
+    """발음 변환"""
+    result = text
+    for kr, converted in PRONUNCIATION_CONVERT.items():
+        result = result.replace(kr, converted)
+    return result
+
+def convert_numbers(text):
+    """숫자를 한국어로 변환"""
+    import re
+    result = text
+    
+    # 고유어 단위 (개, 명, 봉지, 마리, 살, 잔, 그릇, 권, 켤레, 대)
+    native_units = ['개', '명', '봉지', '마리', '살', '잔', '그릇', '권', '켤레', '대', '시간']
+    for unit in native_units:
+        pattern = rf'(\d+)\s*{unit}'
+        matches = re.findall(pattern, result)
+        for num in matches:
+            if num in NATIVE_KOREAN_NUMBERS:
+                result = re.sub(rf'{num}\s*{unit}', f'{NATIVE_KOREAN_NUMBERS[num]} {unit}', result)
+    
+    # 한자어 단위 (kg, g, %, 원, 배, m, L, 도, 층)
+    sino_patterns = [
+        (r'(\d+)\s*kg', '킬로그램'),
+        (r'(\d+)\s*g', '그램'),
+        (r'(\d+)\s*%', '퍼센트'),
+        (r'(\d+)\s*원', '원'),
+        (r'(\d+)\s*배', '배'),
+        (r'(\d+)\s*ml', '밀리리터'),
+    ]
+    
+    for pattern, unit_name in sino_patterns:
+        matches = re.findall(pattern, result)
+        for num in matches:
+            num_str = num
+            if int(num) >= 100:
+                # 100 이상은 한자어로
+                converted = ""
+                n = int(num)
+                if n >= 10000:
+                    converted += f"{SINO_KOREAN_NUMBERS.get(str(n // 10000), str(n // 10000))}만"
+                    n = n % 10000
+                if n >= 1000:
+                    converted += f"{SINO_KOREAN_NUMBERS.get(str(n // 1000), '')}천"
+                    n = n % 1000
+                if n >= 100:
+                    converted += f"{SINO_KOREAN_NUMBERS.get(str(n // 100), '')}백"
+                    n = n % 100
+                if n >= 10:
+                    converted += f"{SINO_KOREAN_NUMBERS.get(str(n // 10), '')}십"
+                    n = n % 10
+                if n > 0:
+                    converted += SINO_KOREAN_NUMBERS.get(str(n), str(n))
+                result = re.sub(pattern.replace(r'(\d+)', num_str), f'{converted} {unit_name}', result)
+            elif num in SINO_KOREAN_NUMBERS:
+                result = re.sub(pattern.replace(r'(\d+)', num_str), f'{SINO_KOREAN_NUMBERS[num]} {unit_name}', result)
+    
+    # 1+1 -> 원플원
+    result = result.replace('1+1', '원플원')
+    result = result.replace('2+1', '투플원')
+    
+    return result
+
+def generate_video_prompt(scene_data, options):
+    """영상 프롬프트 생성"""
+    gender = "woman" if options.get('gender', '여성') == '여성' else "man"
+    pronoun = "She" if gender == "woman" else "He"
+    pronoun_pos = "her" if gender == "woman" else "his"
+    age = options.get('age', '26살')
+    product = options.get('product', 'snack bag')
+    
+    scene_num = scene_data.get('scene_num', 1)
+    action = scene_data.get('action', '')
+    dialogue = scene_data.get('dialogue', '')
+    
+    # 발음 변환 및 숫자 변환
+    dialogue = convert_pronunciation(dialogue)
+    dialogue = convert_numbers(dialogue)
+    
+    lines = [
+        f"Ultra-realistic cinematic 4K HDR 9:16 video of the same {gender} from the reference image.",
+        f"Identical face, hairstyle, outfit, and background.",
+        "",
+        f"{action}",
+        "",
+        f'{pronoun} speaks in Korean:',
+        f'"{dialogue}"',
+        "",
+        f"Natural body language throughout.",
+        f"Bright, clean lighting.",
+        "",
+        f"No subtitles, on-screen text, music, background music, sound effects, or audio effects.",
+        f"Full 9:16 vertical format."
+    ]
+    
+    return "\n".join(lines)
+
+@app.route('/generate_video', methods=['POST'])
+def generate_video():
+    data = request.json
+    
+    plan_text = data.get('plan', '')
+    options = {
+        'gender': data.get('gender', '여성'),
+        'age': data.get('age', '26살'),
+        'product': data.get('product', 'snack bag')
+    }
+    
+    # 기획안 파싱 (씬별로 분리)
+    scenes = []
+    current_scene = None
+    
+    lines = plan_text.strip().split('\n')
+    for line in lines:
+        line = line.strip()
+        if line.startswith('#') and any(c.isdigit() for c in line):
+            # 새 씬 시작
+            if current_scene:
+                scenes.append(current_scene)
+            scene_num = ''.join(filter(str.isdigit, line.split()[0] if line.split() else '1'))
+            current_scene = {'scene_num': int(scene_num) if scene_num else len(scenes) + 1, 'action': '', 'dialogue': ''}
+        elif current_scene:
+            if line.startswith('(') and line.endswith(')'):
+                current_scene['action'] += line[1:-1] + ' '
+            elif line:
+                current_scene['dialogue'] += line + ' '
+    
+    if current_scene:
+        scenes.append(current_scene)
+    
+    # 각 씬별 프롬프트 생성
+    prompts = []
+    for scene in scenes:
+        prompt = generate_video_prompt(scene, options)
+        prompts.append({
+            'scene_num': scene['scene_num'],
+            'prompt': prompt
+        })
+    
+    return jsonify({'prompts': prompts})

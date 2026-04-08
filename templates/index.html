@@ -6,614 +6,203 @@
     <title>🍌 나노바나나 프롬프트 생성기</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
-            background: linear-gradient(135deg, #fff9e6 0%, #fff3cd 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
+        body { font-family: 'Apple SD Gothic Neo', sans-serif; background: linear-gradient(135deg, #fff9e6, #fff3cd); min-height: 100vh; padding: 20px; }
         .container { max-width: 900px; margin: 0 auto; }
-        .header { text-align: center; margin-bottom: 30px; }
-        .header h1 { font-size: 2.2em; color: #f5a623; margin-bottom: 10px; }
-        .header p { color: #666; font-size: 1.1em; }
-        
-        /* 탭 스타일 */
-        .tabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        .tab-btn {
-            flex: 1;
-            padding: 15px 20px;
-            border: 2px solid #f5a623;
-            background: white;
-            border-radius: 15px;
-            font-size: 1.1em;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .tab-btn:hover {
-            background: #fff9e6;
-        }
-        .tab-btn.active {
-            background: #f5a623;
-            color: white;
-        }
-        .tab-content {
-            display: none;
-        }
-        .tab-content.active {
-            display: block;
-        }
-        
-        .card {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            margin-bottom: 20px;
-            box-shadow: 0 10px 40px rgba(245, 166, 35, 0.15);
-        }
-        .card h2 { color: #333; margin-bottom: 20px; font-size: 1.3em; }
-        .simple-input {
-            width: 100%;
-            padding: 18px 20px;
-            border: 2px solid #f5a623;
-            border-radius: 15px;
-            font-size: 1.1em;
-            outline: none;
-        }
-        .simple-input:focus {
-            border-color: #e09000;
-            box-shadow: 0 0 0 4px rgba(245, 166, 35, 0.2);
-        }
-        .btn-generate {
-            width: 100%;
-            padding: 18px;
-            background: linear-gradient(135deg, #f5a623 0%, #f7b731 100%);
-            color: white;
-            border: none;
-            border-radius: 15px;
-            font-size: 1.2em;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 20px;
-        }
-        .btn-generate:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(245, 166, 35, 0.4);
-        }
-        .examples { margin-top: 20px; }
-        .examples h4 { color: #666; margin-bottom: 10px; font-size: 0.95em; }
-        .example-chips { display: flex; flex-wrap: wrap; gap: 10px; }
-        .example-chip {
-            background: #fff9e6;
-            border: 1px solid #f5a623;
-            padding: 10px 15px;
-            border-radius: 25px;
-            cursor: pointer;
-            font-size: 0.9em;
-            color: #333;
-        }
-        .example-chip:hover { background: #f5a623; color: white; }
-        
-        .options-toggle {
-            background: none;
-            border: none;
-            color: #f5a623;
-            cursor: pointer;
-            font-size: 1em;
-            margin-top: 15px;
-        }
-        .options-toggle:hover { text-decoration: underline; }
-        
-        .detailed-options {
-            display: none;
-            margin-top: 25px;
-            padding-top: 25px;
-            border-top: 1px solid #eee;
-        }
+        .header { text-align: center; margin-bottom: 25px; }
+        .header h1 { font-size: 2em; color: #f5a623; }
+        .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tab-btn { flex: 1; min-width: 120px; padding: 12px; border: 2px solid #f5a623; background: white; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 0.9em; }
+        .tab-btn:hover { background: #fff9e6; }
+        .tab-btn.active { background: #f5a623; color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .card { background: white; border-radius: 15px; padding: 25px; margin-bottom: 15px; box-shadow: 0 5px 20px rgba(245,166,35,0.1); }
+        .card h2 { color: #333; margin-bottom: 15px; font-size: 1.1em; }
+        .simple-input, textarea, select { width: 100%; padding: 12px; border: 2px solid #f5a623; border-radius: 10px; font-size: 1em; outline: none; font-family: inherit; }
+        textarea { min-height: 150px; resize: vertical; }
+        .btn-generate { width: 100%; padding: 15px; background: linear-gradient(135deg, #f5a623, #f7b731); color: white; border: none; border-radius: 12px; font-size: 1.1em; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        .btn-generate:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(245,166,35,0.4); }
+        .option-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 15px; }
+        .option-group label { display: block; margin-bottom: 5px; color: #555; font-size: 0.85em; font-weight: 500; }
+        .option-group select, .option-group input { padding: 10px; border: 1px solid #ddd; border-radius: 8px; }
+        .options-toggle { background: none; border: none; color: #f5a623; cursor: pointer; margin-top: 10px; }
+        .detailed-options { display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; }
         .detailed-options.show { display: block; }
-        
-        .option-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 15px;
-        }
-        .option-group { margin-bottom: 10px; }
-        .option-group label {
-            display: block;
-            margin-bottom: 6px;
-            color: #555;
-            font-weight: 500;
-            font-size: 0.9em;
-        }
-        .option-group select, .option-group input {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 0.95em;
-            outline: none;
-        }
-        .option-group select:focus, .option-group input:focus {
-            border-color: #f5a623;
-        }
-        
-        .extra-details { margin-top: 15px; }
-        .extra-details textarea {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 0.95em;
-            resize: vertical;
-            min-height: 60px;
-            outline: none;
-        }
-        .extra-details textarea:focus { border-color: #f5a623; }
-        
         .result-card { display: none; }
         .result-card.show { display: block; }
-        .result-box {
-            background: #f8f9fa;
-            border-radius: 15px;
-            padding: 20px;
-            position: relative;
-        }
-        .result-prompt {
-            font-family: 'Courier New', monospace;
-            font-size: 0.95em;
-            line-height: 1.8;
-            color: #333;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-        .btn-copy {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            padding: 10px 20px;
-            background: #f5a623;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-        .btn-copy:hover { background: #e09000; }
+        .result-box { background: #f8f9fa; border-radius: 12px; padding: 15px; position: relative; margin-bottom: 15px; }
+        .result-prompt { font-family: monospace; font-size: 0.9em; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+        .btn-copy { position: absolute; top: 10px; right: 10px; padding: 8px 15px; background: #f5a623; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85em; }
         .btn-copy.copied { background: #28a745; }
-        .parsed-info {
-            margin-top: 20px;
-            padding: 15px;
-            background: #fff3cd;
-            border-radius: 10px;
-        }
-        .parsed-info h4 { color: #856404; margin-bottom: 10px; }
-        .parsed-tags { display: flex; flex-wrap: wrap; gap: 8px; }
-        .tag {
-            background: white;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.85em;
-            color: #666;
-            border: 1px solid #f5a623;
-        }
-        .tip {
-            background: #e8f5e9;
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 20px;
-            font-size: 0.9em;
-            color: #2e7d32;
-        }
-        
-        /* 합성 프롬프트 탭 스타일 */
-        .product-select {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 25px;
-        }
-        .product-btn {
-            flex: 1;
-            padding: 20px;
-            border: 2px solid #ddd;
-            background: white;
-            border-radius: 15px;
-            cursor: pointer;
-            text-align: center;
-            transition: all 0.3s;
-        }
-        .product-btn:hover {
-            border-color: #f5a623;
-        }
-        .product-btn.selected {
-            border-color: #f5a623;
-            background: #fff9e6;
-        }
-        .product-btn .emoji {
-            font-size: 2.5em;
-            display: block;
-            margin-bottom: 10px;
-        }
-        .product-btn .name {
-            font-weight: bold;
-            color: #333;
-        }
-        
-        .prompt-section {
-            margin-bottom: 25px;
-        }
-        .prompt-section h3 {
-            color: #333;
-            margin-bottom: 15px;
-            font-size: 1.1em;
-        }
-        .prompt-box {
-            background: #f8f9fa;
-            border-radius: 12px;
-            padding: 20px;
-            position: relative;
-        }
-        .prompt-box pre {
-            font-family: 'Courier New', monospace;
-            font-size: 0.9em;
-            line-height: 1.6;
-            white-space: pre-wrap;
-            word-break: break-word;
-            margin: 0;
-            padding-right: 80px;
-        }
-        .prompt-box .btn-copy {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-        }
-        
-        .step-badge {
-            display: inline-block;
-            background: #f5a623;
-            color: white;
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            text-align: center;
-            line-height: 28px;
-            font-weight: bold;
-            margin-right: 10px;
-        }
+        .parsed-info { padding: 12px; background: #fff3cd; border-radius: 10px; margin-top: 15px; }
+        .parsed-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+        .tag { background: white; padding: 4px 10px; border-radius: 15px; font-size: 0.8em; border: 1px solid #f5a623; }
+        .tip { background: #e8f5e9; padding: 12px; border-radius: 10px; margin-top: 15px; font-size: 0.85em; color: #2e7d32; }
+        .product-select { display: flex; gap: 10px; margin-bottom: 20px; }
+        .product-btn { flex: 1; padding: 15px; border: 2px solid #ddd; background: white; border-radius: 12px; cursor: pointer; text-align: center; }
+        .product-btn:hover { border-color: #f5a623; }
+        .product-btn.selected { border-color: #f5a623; background: #fff9e6; }
+        .product-btn .emoji { font-size: 2em; display: block; margin-bottom: 5px; }
+        .prompt-section { margin-bottom: 20px; }
+        .prompt-section h3 { margin-bottom: 10px; font-size: 1em; }
+        .prompt-box { background: #f8f9fa; border-radius: 10px; padding: 15px; position: relative; }
+        .prompt-box pre { font-family: monospace; font-size: 0.85em; line-height: 1.5; white-space: pre-wrap; margin: 0; padding-right: 70px; }
+        .step-badge { display: inline-block; background: #f5a623; color: white; width: 24px; height: 24px; border-radius: 50%; text-align: center; line-height: 24px; font-weight: bold; margin-right: 8px; font-size: 0.85em; }
+        .scene-result { margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 12px; position: relative; }
+        .scene-result h4 { margin-bottom: 10px; color: #f5a623; }
+        .scene-result pre { font-family: monospace; font-size: 0.85em; line-height: 1.5; white-space: pre-wrap; padding-right: 70px; }
+        .example-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .example-chip { background: #fff9e6; border: 1px solid #f5a623; padding: 8px 12px; border-radius: 20px; cursor: pointer; font-size: 0.85em; }
+        .example-chip:hover { background: #f5a623; color: white; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>🍌 나노바나나 프롬프트 생성기</h1>
-            <p>AI 인플루언서 이미지 & 제품 합성 프롬프트</p>
         </div>
         
-        <!-- 탭 버튼 -->
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('person')">👩 실제 사람처럼 만들기</button>
-            <button class="tab-btn" onclick="switchTab('composite')">🎨 제품 합성 프롬프트</button>
+            <button class="tab-btn" onclick="switchTab('composite')">🎨 제품 합성</button>
+            <button class="tab-btn" onclick="switchTab('video')">🎬 영상 프롬프트</button>
         </div>
-        
-        <!-- 탭 1: 사람 이미지 생성 -->
+
+        <!-- 탭 1: 실제 사람처럼 만들기 -->
         <div id="tab-person" class="tab-content active">
             <div class="card">
                 <h2>✍️ 원하는 이미지를 설명해주세요</h2>
-                <input type="text" class="simple-input" id="simpleInput" 
-                       placeholder="예: 40대 흰색 스웻셔츠 입고 소파에 앉아있는 여성">
-                
-                <div class="examples">
-                    <h4>💡 예시 클릭해서 바로 사용:</h4>
-                    <div class="example-chips">
-                        <span class="example-chip" onclick="useExample(this)">40대 흰색 스웻셔츠 입고 소파에 앉아있는 여성</span>
-                        <span class="example-chip" onclick="useExample(this)">30대 베이지 니트 입고 카페에서 커피 마시는 여성</span>
-                        <span class="example-chip" onclick="useExample(this)">20대 남성 검정 티셔츠 입고 헬스장</span>
-                        <span class="example-chip" onclick="useExample(this)">40대 오프숄더 입고 레스토랑에서</span>
-                    </div>
+                <input type="text" class="simple-input" id="simpleInput" placeholder="예: 40대 흰색 스웻셔츠 입고 소파에 앉아있는 여성">
+                <div class="example-chips">
+                    <span class="example-chip" onclick="useExample(this)">40대 흰색 스웻셔츠 입고 소파에 앉아있는 여성</span>
+                    <span class="example-chip" onclick="useExample(this)">30대 베이지 니트 입고 카페에서</span>
+                    <span class="example-chip" onclick="useExample(this)">20대 남성 검정 티셔츠 헬스장</span>
                 </div>
-                
-                <button class="options-toggle" onclick="toggleOptions()">⚙️ 상세 옵션 열기</button>
-                
+                <button class="options-toggle" onclick="toggleOptions()">⚙️ 상세 옵션</button>
                 <div class="detailed-options" id="detailedOptions">
                     <div class="option-grid">
-                        <div class="option-group">
-                            <label>🧑 성별</label>
-                            <select id="genderSelect">
-                                <option value="여성">여성</option>
-                                <option value="남성">남성</option>
-                            </select>
-                        </div>
-                        
-                        <div class="option-group">
-                            <label>👤 나이대</label>
-                            <select id="ageSelect">
-                                <option value="20대 초반">20대 초반</option>
-                                <option value="20대 중반">20대 중반</option>
-                                <option value="20대 후반">20대 후반</option>
-                                <option value="30대 초반">30대 초반</option>
-                                <option value="30대 중반">30대 중반</option>
-                                <option value="30대 후반">30대 후반</option>
-                                <option value="40대 초반" selected>40대 초반</option>
-                                <option value="40대 중반">40대 중반</option>
-                                <option value="40대 후반">40대 후반</option>
-                                <option value="50대 초반">50대 초반</option>
-                                <option value="50대 중반">50대 중반</option>
-                                <option value="50대 후반">50대 후반</option>
-                            </select>
-                        </div>
-                        
-                        <div class="option-group">
-                            <label>📷 카메라</label>
-                            <select id="cameraSelect">
-                                <option value="아이폰 셀카">아이폰 셀카</option>
-                                <option value="아이폰 후면">아이폰 후면</option>
-                                <option value="DSLR">DSLR</option>
-                                <option value="미러리스">미러리스</option>
-                            </select>
-                            <input type="text" id="cameraCustom" placeholder="추가 디테일" style="margin-top: 6px;">
-                        </div>
-                        
-                        <div class="option-group">
-                            <label>👕 의상</label>
-                            <select id="clothingSelect">
-                                <option value="">선택 안함</option>
-                                <option value="흰색 스웻셔츠">흰색 스웻셔츠</option>
-                                <option value="흰색 린넨 탑">흰색 린넨 탑</option>
-                                <option value="베이지 니트">베이지 니트</option>
-                                <option value="검정 티셔츠">검정 티셔츠</option>
-                                <option value="운동복">운동복</option>
-                                <option value="원피스">원피스</option>
-                                <option value="블라우스">블라우스</option>
-                                <option value="가디건">가디건</option>
-                                <option value="후드티">후드티</option>
-                                <option value="오프숄더">오프숄더</option>
-                                <option value="흰색 오프숄더">흰색 오프숄더</option>
-                                <option value="검정 오프숄더">검정 오프숄더</option>
-                                <option value="승무원 유니폼">승무원 유니폼</option>
-                                <option value="아나운서 스타일">아나운서 스타일</option>
-                                <option value="정장">정장</option>
-                                <option value="셔츠">셔츠</option>
-                            </select>
-                            <input type="text" id="clothingCustom" placeholder="추가 디테일 (예: 파란색, 줄무늬)" style="margin-top: 6px;">
-                        </div>
-                        
-                        <div class="option-group">
-                            <label>📍 배경/장소</label>
-                            <select id="locationSelect">
-                                <option value="">선택 안함</option>
-                                <option value="집 거실">집 거실</option>
-                                <option value="집 소파">집 소파</option>
-                                <option value="주방">주방</option>
-                                <option value="카페">카페</option>
-                                <option value="공원">공원</option>
-                                <option value="사무실">사무실</option>
-                                <option value="침실">침실</option>
-                                <option value="발코니">발코니</option>
-                                <option value="레스토랑">레스토랑</option>
-                                <option value="헬스장">헬스장</option>
-                                <option value="요가원">요가원</option>
-                                <option value="길거리">길거리</option>
-                                <option value="해변">해변</option>
-                            </select>
-                            <input type="text" id="locationCustom" placeholder="추가 디테일 (예: 화분이 있는)" style="margin-top: 6px;">
-                        </div>
-                        
-                        <div class="option-group">
-                            <label>🦢 목주름</label>
-                            <select id="neckSelect">
-                                <option value="">선택 안함</option>
-                                <option value="자연스러운">자연스러운</option>
-                                <option value="목주름 있는">목주름 있는</option>
-                                <option value="목주름 없는">목주름 없는</option>
-                            </select>
-                        </div>
-                        
-                        <div class="option-group">
-                            <label>😊 표정</label>
-                            <select id="expressionSelect">
-                                <option value="자연스러운 미소">자연스러운 미소</option>
-                                <option value="밝은 미소">밝은 미소</option>
-                                <option value="편안한 표정">편안한 표정</option>
-                                <option value="살짝 웃는">살짝 웃는</option>
-                                <option value="진지한">진지한</option>
-                            </select>
-                            <input type="text" id="expressionCustom" placeholder="추가 디테일 (예: 눈웃음)" style="margin-top: 6px;">
-                        </div>
-                        
-                        <div class="option-group">
-                            <label>💡 조명</label>
-                            <select id="lightingSelect">
-                                <option value="자연광">자연광</option>
-                                <option value="아침 햇살">아침 햇살</option>
-                                <option value="오후 햇살">오후 햇살</option>
-                                <option value="실내 조명">실내 조명</option>
-                                <option value="카페 조명">카페 조명</option>
-                            </select>
-                        </div>
+                        <div class="option-group"><label>🧑 성별</label><select id="genderSelect"><option value="여성">여성</option><option value="남성">남성</option></select></div>
+                        <div class="option-group"><label>👤 나이대</label><select id="ageSelect"><option value="20대 초반">20대 초반</option><option value="20대 중반">20대 중반</option><option value="20대 후반">20대 후반</option><option value="30대 초반">30대 초반</option><option value="30대 중반">30대 중반</option><option value="30대 후반">30대 후반</option><option value="40대 초반" selected>40대 초반</option><option value="40대 중반">40대 중반</option><option value="40대 후반">40대 후반</option><option value="50대 초반">50대 초반</option><option value="50대 중반">50대 중반</option><option value="50대 후반">50대 후반</option></select></div>
+                        <div class="option-group"><label>📷 카메라</label><select id="cameraSelect"><option value="아이폰 셀카">아이폰 셀카</option><option value="아이폰 후면">아이폰 후면</option><option value="DSLR">DSLR</option><option value="미러리스">미러리스</option></select><input type="text" id="cameraCustom" placeholder="추가 디테일" style="margin-top:5px;"></div>
+                        <div class="option-group"><label>👕 의상</label><select id="clothingSelect"><option value="">선택 안함</option><option value="흰색 스웻셔츠">흰색 스웻셔츠</option><option value="베이지 니트">베이지 니트</option><option value="검정 티셔츠">검정 티셔츠</option><option value="운동복">운동복</option><option value="원피스">원피스</option><option value="블라우스">블라우스</option><option value="오프숄더">오프숄더</option><option value="승무원 유니폼">승무원 유니폼</option><option value="아나운서 스타일">아나운서 스타일</option><option value="정장">정장</option></select><input type="text" id="clothingCustom" placeholder="추가 디테일" style="margin-top:5px;"></div>
+                        <div class="option-group"><label>📍 배경</label><select id="locationSelect"><option value="">선택 안함</option><option value="집 거실">집 거실</option><option value="집 소파">집 소파</option><option value="주방">주방</option><option value="카페">카페</option><option value="공원">공원</option><option value="사무실">사무실</option><option value="레스토랑">레스토랑</option><option value="헬스장">헬스장</option><option value="해변">해변</option></select><input type="text" id="locationCustom" placeholder="추가 디테일" style="margin-top:5px;"></div>
+                        <div class="option-group"><label>🦢 목주름</label><select id="neckSelect"><option value="">선택 안함</option><option value="자연스러운">자연스러운</option><option value="목주름 있는">목주름 있는</option><option value="목주름 없는">목주름 없는</option></select></div>
+                        <div class="option-group"><label>😊 표정</label><select id="expressionSelect"><option value="자연스러운 미소">자연스러운 미소</option><option value="밝은 미소">밝은 미소</option><option value="편안한 표정">편안한 표정</option><option value="진지한">진지한</option></select><input type="text" id="expressionCustom" placeholder="추가 디테일" style="margin-top:5px;"></div>
+                        <div class="option-group"><label>💡 조명</label><select id="lightingSelect"><option value="자연광">자연광</option><option value="아침 햇살">아침 햇살</option><option value="오후 햇살">오후 햇살</option><option value="실내 조명">실내 조명</option></select></div>
                     </div>
-                    
-                    <div class="extra-details">
-                        <label style="display: block; margin-bottom: 6px; color: #555; font-weight: 500; font-size: 0.9em;">
-                            📝 추가 디테일 (선택)
-                        </label>
-                        <textarea id="customDetails" placeholder="예: 손에 빨간색 스낵 파우치를 들고 있음"></textarea>
-                    </div>
-                    
+                    <div style="margin-top:10px;"><label style="font-size:0.85em;color:#555;">📝 추가 디테일</label><textarea id="customDetails" style="min-height:60px;margin-top:5px;" placeholder="예: 손에 빨간색 스낵 파우치를 들고 있음"></textarea></div>
                     <button class="btn-generate" onclick="generateCustom()">🎨 상세 옵션으로 생성</button>
                 </div>
-                
                 <button class="btn-generate" onclick="generateSimple()">🎨 프롬프트 생성하기</button>
             </div>
-            
             <div class="card result-card" id="resultCard">
                 <h2>✨ 생성된 프롬프트</h2>
-                <div class="result-box">
-                    <button class="btn-copy" onclick="copyPrompt()">📋 복사</button>
-                    <div class="result-prompt" id="resultPrompt"></div>
-                </div>
-                
-                <div class="parsed-info">
-                    <h4>🔍 인식된 요소:</h4>
-                    <div class="parsed-tags" id="parsedTags"></div>
-                </div>
-                
-                <div class="tip">
-                    <strong>💡 Tip:</strong> 이 프롬프트를 Midjourney, DALL-E, Stable Diffusion 등에 붙여넣기 하세요!<br>
-                    9:16 릴스 비율이 자동 포함되어 있습니다.
-                </div>
+                <div class="result-box"><button class="btn-copy" onclick="copyPrompt()">📋 복사</button><div class="result-prompt" id="resultPrompt"></div></div>
+                <div class="parsed-info"><strong>🔍 인식된 요소:</strong><div class="parsed-tags" id="parsedTags"></div></div>
             </div>
         </div>
-        
-        <!-- 탭 2: 제품 합성 프롬프트 -->
+
+        <!-- 탭 2: 제품 합성 -->
         <div id="tab-composite" class="tab-content">
             <div class="card">
                 <h2>🛍️ 제품 종류 선택</h2>
                 <div class="product-select">
-                    <div class="product-btn selected" onclick="selectProduct('snack')">
-                        <span class="emoji">🍪</span>
-                        <span class="name">과자봉지</span>
-                    </div>
-                    <div class="product-btn" onclick="selectProduct('cosmetic')">
-                        <span class="emoji">💄</span>
-                        <span class="name">화장품</span>
-                    </div>
+                    <div class="product-btn selected" onclick="selectProduct('snack')"><span class="emoji">🍪</span><span>과자봉지</span></div>
+                    <div class="product-btn" onclick="selectProduct('cosmetic')"><span class="emoji">💄</span><span>화장품</span></div>
                 </div>
             </div>
-            
             <div class="card">
                 <div class="prompt-section">
                     <h3><span class="step-badge">1</span>3×3 그리드 이미지 만들기</h3>
-                    <p style="color: #666; margin-bottom: 15px; font-size: 0.9em;">제품 이미지와 함께 사용하세요. 그리드가 있어야 AI 합성이 자연스러워요!</p>
-                    <div class="prompt-box">
-                        <button class="btn-copy" onclick="copyText('gridPrompt')">📋 복사</button>
-                        <pre id="gridPrompt">Create a 3×3 grid of different angles of this product.</pre>
-                    </div>
+                    <div class="prompt-box"><button class="btn-copy" onclick="copyText('gridPrompt')">📋 복사</button><pre id="gridPrompt">Create a 3×3 grid of different angles of this product.</pre></div>
                 </div>
-                
                 <div class="prompt-section">
-                    <h3><span class="step-badge">2</span>인플루언서 + 제품 합성하기</h3>
-                    <p style="color: #666; margin-bottom: 15px; font-size: 0.9em;">사람 이미지와 제품 그리드 이미지를 함께 넣고 이 프롬프트를 사용하세요.</p>
-                    
-                    <div style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 6px; color: #555; font-weight: 500; font-size: 0.9em;">
-                            📝 추가 디테일 (선택)
-                        </label>
-                        <input type="text" id="compositeDetail" class="simple-input" style="padding: 12px 15px; font-size: 1em;"
-                               placeholder="예: 두 손으로 들고있는, 여러개 들고있는, 얼굴 옆에 들고있는"
-                               oninput="updateCompositePrompt()">
-                    </div>
-                    
-                    <div class="prompt-box">
-                        <button class="btn-copy" onclick="copyText('compositePrompt')">📋 복사</button>
-                        <pre id="compositePrompt">Place the snack pouch bag in the influencer's hand naturally.
+                    <h3><span class="step-badge">2</span>인플루언서 + 제품 합성</h3>
+                    <div style="margin-bottom:10px;"><input type="text" id="compositeDetail" class="simple-input" style="padding:10px;" placeholder="추가 디테일 (예: 두 손으로 들고있는, 여러개 들고있는)" oninput="updateCompositePrompt()"></div>
+                    <div class="prompt-box"><button class="btn-copy" onclick="copyText('compositePrompt')">📋 복사</button><pre id="compositePrompt">Place the snack pouch bag in the influencer's hand naturally.
 Match the lighting of the product to the environment.
 Keep the hand pose natural and relaxed.
-The product should look like it belongs in the scene.</pre>
-                    </div>
+The product should look like it belongs in the scene.</pre></div>
+                </div>
+                <div class="tip">💡 사용순서: 1. 사람 이미지 생성 → 2. 제품 그리드 생성 → 3. 합성</div>
+            </div>
+        </div>
+
+        <!-- 탭 3: 영상 프롬프트 -->
+        <div id="tab-video" class="tab-content">
+            <div class="card">
+                <h2>🎬 영상 프롬프트 생성기</h2>
+                <p style="color:#666;font-size:0.9em;margin-bottom:15px;">기획안을 입력하면 씬별 영상 프롬프트를 자동 생성합니다. (8초 영상 기준)</p>
+                
+                <div class="option-grid" style="margin-bottom:15px;">
+                    <div class="option-group"><label>🧑 성별</label><select id="videoGender"><option value="여성">여성</option><option value="남성">남성</option></select></div>
+                    <div class="option-group"><label>👤 나이</label><input type="text" id="videoAge" value="26살" placeholder="예: 26살"></div>
+                    <div class="option-group"><label>📦 제품</label><select id="videoProduct"><option value="snack bag">과자봉지</option><option value="cosmetic product">화장품</option></select></div>
                 </div>
                 
+                <label style="font-size:0.9em;color:#555;font-weight:500;">📋 기획안 입력</label>
+                <textarea id="videoPlan" placeholder="#1
+('언니들 언니들 언니들' 할때 카메라 안보이다가 처음에는 오른쪽에서 뛰어들어와서 등장함)
+
+언니들 언니들 언니들 ! 대박!! (대박할때 놀란거같이) .
+
+우리 둔한 남편이! 저당 과자가 이렇게 맛있는거 처음이라고 계속 집어먹는거에요 !
+
+이런 적은 처음이에요! !!
+
+#2
+(과자를 클로즈업하면서 보여주기 그리고 과자 한손가락으로 콕콕 가리키면서 자랑하기)
+
+일단, 이 웨하스는 저당인데도, 밍밍한 맛 없이 확실히 바삭하고 달달해요!
+오히려 시중 웨하스보다 이게 훨씬 맛있고 크림도 진해요~! 짱!
+
+#3
+(과자봉지 한 봉지 들고 이야기한다)
+
+심지어 대용량이라서 가족들 간식 선물로 주기에 딱이더라고요 ㅎㅎ
+
+오늘! 한정수량만 오천원대 할인에! 무배까지 진행해요 ! 링크 확인하세요 ㅎ"></textarea>
+                
+                <button class="btn-generate" onclick="generateVideo()">🎬 영상 프롬프트 생성</button>
+            </div>
+            
+            <div class="card result-card" id="videoResultCard">
+                <h2>✨ 생성된 영상 프롬프트</h2>
+                <div id="videoResults"></div>
                 <div class="tip">
-                    <strong>💡 사용 순서:</strong><br>
-                    1. "사람 이미지 생성" 탭에서 인플루언서 이미지 생성<br>
-                    2. 제품 사진 + 그리드 프롬프트로 3×3 그리드 생성<br>
-                    3. 인플루언서 이미지 + 그리드 이미지 + 합성 프롬프트로 최종 합성<br>
-                    <br>
-                    <em>* 일레븐랩스는 저작권 이슈로 나노바나나 활용해서 합성</em>
+                    💡 각 씬은 8초 영상 기준입니다.<br>
+                    ✅ 숫자 자동 변환 (1개→한 개, 3kg→삼 킬로그램)<br>
+                    ✅ 발음 변환 (웨하스→웨'하'스, 떴다→떠따)<br>
+                    ✅ 음악/자막 없음 자동 추가
                 </div>
             </div>
         </div>
     </div>
-    
+
     <script>
         let selectedProduct = 'snack';
         
         function switchTab(tab) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            
-            if (tab === 'person') {
-                document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
-                document.getElementById('tab-person').classList.add('active');
-            } else {
-                document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
-                document.getElementById('tab-composite').classList.add('active');
-            }
-        }
-        
-        function selectProduct(product) {
-            selectedProduct = product;
-            document.querySelectorAll('.product-btn').forEach(btn => btn.classList.remove('selected'));
-            event.target.closest('.product-btn').classList.add('selected');
-            updateCompositePrompt();
-        }
-        
-        function updateCompositePrompt() {
-            const detail = document.getElementById('compositeDetail').value.trim();
-            let basePrompt = '';
-            
-            if (selectedProduct === 'snack') {
-                basePrompt = `Place the snack pouch bag in the influencer's hand naturally.
-Match the lighting of the product to the environment.
-Keep the hand pose natural and relaxed.
-The product should look like it belongs in the scene.`;
-            } else {
-                basePrompt = `Place the cosmetic product in the influencer's hand naturally.
-Match the lighting of the product to the environment.
-Keep the hand pose elegant and natural.
-The product should look like it belongs in the scene.`;
-            }
-            
-            if (detail) {
-                basePrompt += `\n${detail}`;
-            }
-            
-            document.getElementById('compositePrompt').textContent = basePrompt;
-        }
-        
-        function copyText(elementId) {
-            const text = document.getElementById(elementId).textContent;
-            navigator.clipboard.writeText(text).then(() => {
-                const btn = event.target;
-                btn.textContent = '✅ 복사됨!';
-                btn.classList.add('copied');
-                setTimeout(() => {
-                    btn.textContent = '📋 복사';
-                    btn.classList.remove('copied');
-                }, 2000);
+            document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+                btn.classList.remove('active');
+                if ((tab === 'person' && i === 0) || (tab === 'composite' && i === 1) || (tab === 'video' && i === 2)) btn.classList.add('active');
             });
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById('tab-' + tab).classList.add('active');
         }
         
-        function useExample(el) {
-            document.getElementById('simpleInput').value = el.textContent;
-        }
-        
+        function useExample(el) { document.getElementById('simpleInput').value = el.textContent; }
         function toggleOptions() {
-            const options = document.getElementById('detailedOptions');
-            const btn = document.querySelector('.options-toggle');
-            options.classList.toggle('show');
-            btn.textContent = options.classList.contains('show') ? '⚙️ 상세 옵션 닫기' : '⚙️ 상세 옵션 열기';
+            const opt = document.getElementById('detailedOptions');
+            opt.classList.toggle('show');
+            document.querySelector('.options-toggle').textContent = opt.classList.contains('show') ? '⚙️ 상세 옵션 닫기' : '⚙️ 상세 옵션';
         }
         
         async function generateSimple() {
             const input = document.getElementById('simpleInput').value.trim();
-            if (!input) {
-                alert('이미지 설명을 입력해주세요!');
-                return;
-            }
-            
-            try {
-                const response = await fetch('/generate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ input: input })
-                });
-                const data = await response.json();
-                showResult(data);
-            } catch (error) {
-                alert('오류: ' + error.message);
-            }
+            if (!input) return alert('이미지 설명을 입력해주세요!');
+            const res = await fetch('/generate', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({input}) });
+            showResult(await res.json());
         }
         
         async function generateCustom() {
@@ -632,60 +221,87 @@ The product should look like it belongs in the scene.`;
                 lighting: document.getElementById('lightingSelect').value,
                 custom_details: document.getElementById('customDetails').value
             };
-            
-            try {
-                const response = await fetch('/generate_custom', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                const result = await response.json();
-                showResult(result);
-            } catch (error) {
-                alert('오류: ' + error.message);
-            }
+            const res = await fetch('/generate_custom', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
+            showResult(await res.json());
         }
         
         function showResult(data) {
             document.getElementById('resultPrompt').textContent = data.prompt;
-            
-            const tagsContainer = document.getElementById('parsedTags');
-            tagsContainer.innerHTML = '';
-            
-            const tagLabels = {
-                gender: '성별', age: '나이', camera: '카메라', clothing: '의상',
-                location: '장소', neck: '목주름', expression: '표정', lighting: '조명'
-            };
-            
-            for (const [key, value] of Object.entries(data.parsed)) {
-                if (value && tagLabels[key]) {
-                    const tag = document.createElement('span');
-                    tag.className = 'tag';
-                    tag.textContent = `${tagLabels[key]}: ${value}`;
-                    tagsContainer.appendChild(tag);
-                }
+            const tags = document.getElementById('parsedTags');
+            tags.innerHTML = '';
+            const labels = {gender:'성별',age:'나이',camera:'카메라',clothing:'의상',location:'장소',neck:'목주름',expression:'표정',lighting:'조명'};
+            for (const [k,v] of Object.entries(data.parsed)) {
+                if (v && labels[k]) { const t = document.createElement('span'); t.className='tag'; t.textContent=`${labels[k]}: ${v}`; tags.appendChild(t); }
             }
-            
             document.getElementById('resultCard').classList.add('show');
-            document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth' });
+            document.getElementById('resultCard').scrollIntoView({behavior:'smooth'});
         }
         
         function copyPrompt() {
-            const prompt = document.getElementById('resultPrompt').textContent;
-            navigator.clipboard.writeText(prompt).then(() => {
-                const btn = document.querySelector('#resultCard .btn-copy');
-                btn.textContent = '✅ 복사됨!';
-                btn.classList.add('copied');
-                setTimeout(() => {
-                    btn.textContent = '📋 복사';
-                    btn.classList.remove('copied');
-                }, 2000);
-            });
+            navigator.clipboard.writeText(document.getElementById('resultPrompt').textContent);
+            const btn = document.querySelector('#resultCard .btn-copy');
+            btn.textContent = '✅ 복사됨!'; btn.classList.add('copied');
+            setTimeout(() => { btn.textContent = '📋 복사'; btn.classList.remove('copied'); }, 2000);
         }
         
-        document.getElementById('simpleInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') generateSimple();
-        });
+        function copyText(id) {
+            navigator.clipboard.writeText(document.getElementById(id).textContent);
+            const btn = event.target;
+            btn.textContent = '✅ 복사됨!'; btn.classList.add('copied');
+            setTimeout(() => { btn.textContent = '📋 복사'; btn.classList.remove('copied'); }, 2000);
+        }
+        
+        function selectProduct(product) {
+            selectedProduct = product;
+            document.querySelectorAll('.product-btn').forEach(b => b.classList.remove('selected'));
+            event.target.closest('.product-btn').classList.add('selected');
+            updateCompositePrompt();
+        }
+        
+        function updateCompositePrompt() {
+            const detail = document.getElementById('compositeDetail').value.trim();
+            let base = selectedProduct === 'snack' 
+                ? `Place the snack pouch bag in the influencer's hand naturally.\nMatch the lighting of the product to the environment.\nKeep the hand pose natural and relaxed.\nThe product should look like it belongs in the scene.`
+                : `Place the cosmetic product in the influencer's hand naturally.\nMatch the lighting of the product to the environment.\nKeep the hand pose elegant and natural.\nThe product should look like it belongs in the scene.`;
+            if (detail) base += `\n${detail}`;
+            document.getElementById('compositePrompt').textContent = base;
+        }
+        
+        async function generateVideo() {
+            const plan = document.getElementById('videoPlan').value.trim();
+            if (!plan) return alert('기획안을 입력해주세요!');
+            const data = {
+                plan,
+                gender: document.getElementById('videoGender').value,
+                age: document.getElementById('videoAge').value,
+                product: document.getElementById('videoProduct').value
+            };
+            const res = await fetch('/generate_video', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
+            const result = await res.json();
+            showVideoResults(result.prompts);
+        }
+        
+        function showVideoResults(prompts) {
+            const container = document.getElementById('videoResults');
+            container.innerHTML = '';
+            prompts.forEach((p, i) => {
+                const div = document.createElement('div');
+                div.className = 'scene-result';
+                div.innerHTML = `<h4>🎬 씬 #${p.scene_num} 프롬프트</h4><button class="btn-copy" onclick="copyScenePrompt(${i})">📋 복사</button><pre id="scenePrompt${i}">${p.prompt}</pre>`;
+                container.appendChild(div);
+            });
+            document.getElementById('videoResultCard').classList.add('show');
+            document.getElementById('videoResultCard').scrollIntoView({behavior:'smooth'});
+        }
+        
+        function copyScenePrompt(i) {
+            navigator.clipboard.writeText(document.getElementById('scenePrompt'+i).textContent);
+            const btns = document.querySelectorAll('.scene-result .btn-copy');
+            btns[i].textContent = '✅ 복사됨!'; btns[i].classList.add('copied');
+            setTimeout(() => { btns[i].textContent = '📋 복사'; btns[i].classList.remove('copied'); }, 2000);
+        }
+        
+        document.getElementById('simpleInput').addEventListener('keypress', e => { if (e.key === 'Enter') generateSimple(); });
     </script>
 </body>
 </html>
