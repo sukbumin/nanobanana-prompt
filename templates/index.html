@@ -118,9 +118,17 @@
                 </div>
                 <div class="prompt-section">
                     <h3><span class="step-badge">2</span>인플루언서 + 제품 합성</h3>
-                    <div style="margin-bottom:10px;"><input type="text" id="compositeDetail" class="simple-input" style="padding:10px;" placeholder="추가 디테일 (예: 두 손으로 들고있는, 여러개 들고있는)" oninput="updateCompositePrompt()"></div>
+                    <div class="option-grid" style="margin-bottom:10px;">
+                        <div class="option-group"><label>✋ 손 포즈</label><select id="handPose" onchange="updateCompositePrompt()"><option value="one">한 손으로</option><option value="both">양손으로</option></select></div>
+                    </div>
+                    <div style="margin-bottom:10px;display:flex;gap:10px;">
+                        <input type="text" id="compositeDetail" class="simple-input" style="padding:10px;flex:1;" placeholder="추가 디테일 (한국어로 입력)">
+                        <button onclick="translateAndUpdate()" style="padding:10px 20px;background:#f5a623;color:white;border:none;border-radius:8px;cursor:pointer;white-space:nowrap;">🔄 번역</button>
+                    </div>
                     <div class="prompt-box"><button class="btn-copy" onclick="copyText('compositePrompt')">📋 복사</button><pre id="compositePrompt">Place the snack pouch bag in the influencer's hand naturally.
 The snack bag should be larger than the person's face, prominently visible.
+Hold the product with one hand.
+Do NOT cover or block the face with the product.
 Match the lighting of the product to the environment.
 Keep the hand pose natural and relaxed.
 The product should look like it belongs in the scene.</pre></div>
@@ -260,31 +268,44 @@ The product should look like it belongs in the scene.</pre></div>
         }
         
         function updateCompositePrompt() {
-            const detail = document.getElementById('compositeDetail').value.trim();
-            // 한국어 → 영어 번역
-            const translations = {
-                '과자봉지가 너무작아': 'make the snack bag much larger and more prominent',
-                '너무 작아': 'make it larger',
-                '더 크게': 'make it larger',
-                '두 손으로': 'holding with both hands',
-                '양손으로': 'holding with both hands',
-                '여러개': 'multiple products',
-                '여러 개': 'multiple products',
-                '얼굴 옆에': 'next to face',
-                '얼굴옆에': 'next to face',
-                '가슴 높이': 'at chest level',
-                '눈높이': 'at eye level'
-            };
-            let translatedDetail = detail;
-            for (const [kr, en] of Object.entries(translations)) {
-                translatedDetail = translatedDetail.replace(kr, en);
-            }
+            const handPose = document.getElementById('handPose').value;
+            const handText = handPose === 'both' ? 'Hold the product with both hands.' : 'Hold the product with one hand.';
             
             let base = selectedProduct === 'snack' 
-                ? `Place the snack pouch bag in the influencer's hand naturally.\nThe snack bag should be larger than the person's face, prominently visible.\nMatch the lighting of the product to the environment.\nKeep the hand pose natural and relaxed.\nThe product should look like it belongs in the scene.`
-                : `Place the cosmetic product in the influencer's hand naturally.\nThe product should be clearly visible and prominent in the frame.\nMatch the lighting of the product to the environment.\nKeep the hand pose elegant and natural.\nThe product should look like it belongs in the scene.`;
-            if (translatedDetail) base += `\n${translatedDetail}`;
+                ? `Place the snack pouch bag in the influencer's hand naturally.\nThe snack bag should be larger than the person's face, prominently visible.\n${handText}\nDo NOT cover or block the face with the product.\nMatch the lighting of the product to the environment.\nKeep the hand pose natural and relaxed.\nThe product should look like it belongs in the scene.`
+                : `Place the cosmetic product in the influencer's hand naturally.\nThe product should be clearly visible and prominent in the frame.\n${handText}\nDo NOT cover or block the face with the product.\nMatch the lighting of the product to the environment.\nKeep the hand pose elegant and natural.\nThe product should look like it belongs in the scene.`;
+            
             document.getElementById('compositePrompt').textContent = base;
+        }
+        
+        async function translateAndUpdate() {
+            const detail = document.getElementById('compositeDetail').value.trim();
+            if (!detail) {
+                updateCompositePrompt();
+                return;
+            }
+            
+            // 서버에 번역 요청
+            try {
+                const res = await fetch('/translate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({text: detail})
+                });
+                const data = await res.json();
+                
+                const handPose = document.getElementById('handPose').value;
+                const handText = handPose === 'both' ? 'Hold the product with both hands.' : 'Hold the product with one hand.';
+                
+                let base = selectedProduct === 'snack' 
+                    ? `Place the snack pouch bag in the influencer's hand naturally.\nThe snack bag should be larger than the person's face, prominently visible.\n${handText}\nDo NOT cover or block the face with the product.\nMatch the lighting of the product to the environment.\nKeep the hand pose natural and relaxed.\nThe product should look like it belongs in the scene.`
+                    : `Place the cosmetic product in the influencer's hand naturally.\nThe product should be clearly visible and prominent in the frame.\n${handText}\nDo NOT cover or block the face with the product.\nMatch the lighting of the product to the environment.\nKeep the hand pose elegant and natural.\nThe product should look like it belongs in the scene.`;
+                
+                base += `\n${data.translated}`;
+                document.getElementById('compositePrompt').textContent = base;
+            } catch (e) {
+                alert('번역 오류: ' + e.message);
+            }
         }
         
         async function generateVideo() {

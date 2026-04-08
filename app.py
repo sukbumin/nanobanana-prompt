@@ -463,3 +463,62 @@ def generate_video():
         })
     
     return jsonify({'prompts': prompts})
+
+# 한국어 → 영어 번역 (합성 프롬프트용)
+COMPOSITE_TRANSLATIONS = {
+    # 크기 관련
+    '과자봉지가 너무작아': 'make the snack bag much larger and more prominent',
+    '너무 작아': 'make it larger',
+    '더 크게': 'make it larger',
+    '크게': 'larger',
+    '작게': 'smaller',
+    # 손 관련
+    '두 손으로': 'holding with both hands',
+    '양손으로': 'holding with both hands',
+    '한 손으로': 'holding with one hand',
+    '왼손으로': 'holding with left hand',
+    '오른손으로': 'holding with right hand',
+    # 위치 관련
+    '얼굴 옆에': 'position the product next to the face',
+    '얼굴옆에': 'position the product next to the face',
+    '가슴 높이': 'at chest level',
+    '눈높이': 'at eye level',
+    '어깨 높이': 'at shoulder level',
+    # 개수 관련
+    '여러개': 'multiple products',
+    '여러 개': 'multiple products',
+    '두 개': 'two products',
+    '세 개': 'three products',
+    # 동작 관련
+    '들고있는': 'holding',
+    '보여주는': 'showing',
+    '가리키는': 'pointing at',
+    # 기타
+    '자연스럽게': 'naturally',
+    '예쁘게': 'beautifully',
+    '귀엽게': 'cutely',
+    '웃으면서': 'while smiling',
+    '카메라 보면서': 'while looking at camera'
+}
+
+@app.route('/translate', methods=['POST'])
+def translate():
+    data = request.json
+    text = data.get('text', '')
+    
+    if not text:
+        return jsonify({'translated': ''})
+    
+    result = text
+    # 긴 표현부터 먼저 변환
+    sorted_items = sorted(COMPOSITE_TRANSLATIONS.items(), key=lambda x: len(x[0]), reverse=True)
+    for kr, en in sorted_items:
+        result = result.replace(kr, en)
+    
+    # 아직 한국어가 남아있으면 기본 영어 문장으로 감싸기
+    import re
+    if re.search('[가-힣]', result):
+        # 한국어가 남아있으면 그냥 영어 설명으로 변환 시도
+        result = f"Additional detail: {result}"
+    
+    return jsonify({'translated': result})
