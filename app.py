@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, jsonify
+import re
 
 app = Flask(__name__)
 
@@ -90,7 +91,6 @@ NECK_PRESETS = {
 
 # 한국어 → 영어 자동 변환 (추가 디테일용)
 KOREAN_TO_ENGLISH = {
-    # 배경/장소 관련
     "미니멀한 방안": "minimal room",
     "미니멀한 방": "minimal room",
     "미니멀한": "minimal",
@@ -109,7 +109,6 @@ KOREAN_TO_ENGLISH = {
     "모던한 느낌": "modern style",
     "럭셔리한": "luxurious",
     "심플한": "simple",
-    # 의상 관련
     "파란색": "blue",
     "빨간색": "red",
     "검정색": "black",
@@ -122,7 +121,6 @@ KOREAN_TO_ENGLISH = {
     "실크": "silk",
     "캐주얼한": "casual",
     "포멀한": "formal",
-    # 표정/포즈 관련
     "눈웃음": "smiling eyes",
     "윙크": "winking",
     "살짝 고개 기울인": "slightly tilted head",
@@ -130,28 +128,195 @@ KOREAN_TO_ENGLISH = {
     "손 흔드는": "waving hand",
     "브이": "V sign",
     "하트": "heart gesture",
-    # 카메라 관련
     "클로즈업": "close-up shot",
     "상반신샷": "upper body shot",
     "상반신": "upper body shot",
     "전신샷": "full body shot",
     "전신": "full body shot",
-    # 기타
     "자연스럽게": "naturally",
     "편안하게": "comfortably",
     "고급스럽게": "elegantly"
 }
+
+# 영상 프롬프트용 발음 변환
+PRONUNCIATION_CONVERT = {
+    "웨하스": "웨'하'스",
+    "바닐라": "바'닐'라",
+    "떴다": "떠따",
+    "미쳤다": "미쳐따",
+    "떴습니다": "떠씁니다",
+    "됐다": "돼따",
+    "했다": "해따",
+    "갔다": "가따",
+    "왔다": "와따",
+    "먹었다": "머거따",
+    "봤다": "봐따"
+}
+
+# 숫자 변환 - 고유어 (개수)
+NATIVE_KOREAN_NUMBERS = {
+    "1": "한", "2": "두", "3": "세", "4": "네", "5": "다섯",
+    "6": "여섯", "7": "일곱", "8": "여덟", "9": "아홉", "10": "열"
+}
+
+# 숫자 변환 - 한자어 (측정)
+SINO_KOREAN_NUMBERS = {
+    "1": "일", "2": "이", "3": "삼", "4": "사", "5": "오",
+    "6": "육", "7": "칠", "8": "팔", "9": "구", "10": "십",
+    "100": "백", "1000": "천", "10000": "만"
+}
+
+# 한국어 → 영어 번역 (합성 프롬프트용) - 더 많은 표현 추가
+COMPOSITE_TRANSLATIONS = {
+    # 크기 관련
+    "과자봉지가 너무작아": "make the snack bag much larger and more prominent",
+    "너무 작아": "make it larger",
+    "더 크게": "make it larger",
+    "크게": "larger",
+    "작게": "smaller",
+    # 손 관련
+    "두 손으로": "holding with both hands",
+    "양손으로": "holding with both hands",
+    "한 손으로": "holding with one hand",
+    "왼손으로": "holding with left hand",
+    "오른손으로": "holding with right hand",
+    # 위치 관련
+    "얼굴 옆에": "position the product next to the face",
+    "얼굴옆에": "position the product next to the face",
+    "가슴 높이": "at chest level",
+    "눈높이": "at eye level",
+    "어깨 높이": "at shoulder level",
+    # 개수 관련
+    "여러개": "multiple products",
+    "여러 개": "multiple products",
+    "두 개": "two products",
+    "세 개": "three products",
+    "네 개": "four products",
+    "다섯 개": "five products",
+    "3개": "three products",
+    "2개": "two products",
+    "4개": "four products",
+    "5개": "five products",
+    "봉지 3개": "three snack bags",
+    "봉지 2개": "two snack bags",
+    "봉지 4개": "four snack bags",
+    "봉지 5개": "five snack bags",
+    # 동작 관련
+    "들고있는거로 해줘": "holding the product",
+    "들고있는거로": "holding the product",
+    "들고있는": "holding",
+    "들고 있는": "holding",
+    "보여주는": "showing",
+    "가리키는": "pointing at",
+    "해줘": "",
+    "해주세요": "",
+    "거로": "",
+    # 기타
+    "자연스럽게": "naturally",
+    "예쁘게": "beautifully",
+    "귀엽게": "cutely",
+    "웃으면서": "while smiling",
+    "카메라 보면서": "while looking at camera",
+    "봉지": "snack bag",
+    "과자": "snack",
+    "화장품": "cosmetic product"
+}
+
 
 def translate_korean_to_english(text):
     """한국어 텍스트를 영어로 변환 - 긴 표현부터 먼저 변환"""
     if not text:
         return text
     result = text
-    # 긴 표현부터 먼저 변환 (순서 중요)
     sorted_items = sorted(KOREAN_TO_ENGLISH.items(), key=lambda x: len(x[0]), reverse=True)
     for kr, en in sorted_items:
         result = result.replace(kr, en)
     return result
+
+
+def translate_composite_text(text):
+    """합성 프롬프트용 한국어 → 영어 번역"""
+    if not text:
+        return ""
+    result = text
+    # 긴 표현부터 먼저 변환
+    sorted_items = sorted(COMPOSITE_TRANSLATIONS.items(), key=lambda x: len(x[0]), reverse=True)
+    for kr, en in sorted_items:
+        result = result.replace(kr, en)
+    
+    # 빈 문자열 정리
+    result = ' '.join(result.split())
+    
+    # 아직 한국어가 남아있는지 확인
+    if re.search('[가-힣]', result):
+        # 한국어가 남아있으면 기본 영어 문장으로 감싸기
+        return f"Additional detail: {result}"
+    
+    return result
+
+
+def convert_pronunciation(text):
+    """발음 변환"""
+    result = text
+    for kr, converted in PRONUNCIATION_CONVERT.items():
+        result = result.replace(kr, converted)
+    return result
+
+
+def convert_numbers(text):
+    """숫자를 한국어로 변환"""
+    result = text
+    
+    # 고유어 단위 (개, 명, 봉지, 마리, 살, 잔, 그릇, 권, 켤레, 대)
+    native_units = ['개', '명', '봉지', '마리', '살', '잔', '그릇', '권', '켤레', '대', '시간']
+    for unit in native_units:
+        pattern = rf'(\d+)\s*{unit}'
+        matches = re.findall(pattern, result)
+        for num in matches:
+            if num in NATIVE_KOREAN_NUMBERS:
+                result = re.sub(rf'{num}\s*{unit}', f'{NATIVE_KOREAN_NUMBERS[num]} {unit}', result)
+    
+    # 한자어 단위 (kg, g, %, 원, 배, m, L, 도, 층)
+    sino_patterns = [
+        (r'(\d+)\s*kg', '킬로그램'),
+        (r'(\d+)\s*g', '그램'),
+        (r'(\d+)\s*%', '퍼센트'),
+        (r'(\d+)\s*원', '원'),
+        (r'(\d+)\s*배', '배'),
+        (r'(\d+)\s*ml', '밀리리터'),
+    ]
+    
+    for pattern, unit_name in sino_patterns:
+        matches = re.findall(pattern, result)
+        for num in matches:
+            num_str = num
+            if int(num) >= 100:
+                converted = ""
+                n = int(num)
+                if n >= 10000:
+                    converted += f"{SINO_KOREAN_NUMBERS.get(str(n // 10000), str(n // 10000))}만"
+                    n = n % 10000
+                if n >= 1000:
+                    converted += f"{SINO_KOREAN_NUMBERS.get(str(n // 1000), '')}천"
+                    n = n % 1000
+                if n >= 100:
+                    converted += f"{SINO_KOREAN_NUMBERS.get(str(n // 100), '')}백"
+                    n = n % 100
+                if n >= 10:
+                    converted += f"{SINO_KOREAN_NUMBERS.get(str(n // 10), '')}십"
+                    n = n % 10
+                if n > 0:
+                    converted += SINO_KOREAN_NUMBERS.get(str(n), str(n))
+                result = re.sub(pattern.replace(r'(\d+)', num_str), f'{converted} {unit_name}', result)
+            elif num in SINO_KOREAN_NUMBERS:
+                result = re.sub(pattern.replace(r'(\d+)', num_str), f'{SINO_KOREAN_NUMBERS[num]} {unit_name}', result)
+    
+    # 1+1 -> 원플원
+    result = result.replace('1+1', '원플원')
+    result = result.replace('2+1', '투플원')
+    
+    return result
+
 
 def parse_korean_input(user_input):
     result = {
@@ -185,18 +350,17 @@ def parse_korean_input(user_input):
     
     return result
 
+
 def generate_prompt(parsed_data, custom_details=""):
     age_en = AGE_MAPPING.get(parsed_data["age"], "early 40s")
     gender = "woman" if parsed_data.get("gender", "여성") == "여성" else "man"
     pronoun = "She" if gender == "woman" else "He"
     pronoun_pos = "her" if gender == "woman" else "his"
     
-    # 카메라 + 추가 디테일 (한국어 변환)
     camera = CAMERA_PRESETS.get(parsed_data.get("camera", "아이폰 셀카"), CAMERA_PRESETS["아이폰 셀카"])
     if parsed_data.get("camera_detail"):
         camera += f", {translate_korean_to_english(parsed_data['camera_detail'])}"
     
-    # 의상 + 추가 디테일 (한국어 변환)
     if parsed_data["clothing"] in CLOTHING_PRESETS:
         clothing_desc = CLOTHING_PRESETS[parsed_data["clothing"]]
     elif parsed_data["clothing"]:
@@ -206,7 +370,6 @@ def generate_prompt(parsed_data, custom_details=""):
     if parsed_data.get("clothing_detail"):
         clothing_desc += f", {translate_korean_to_english(parsed_data['clothing_detail'])}"
     
-    # 장소 + 추가 디테일 (한국어 변환)
     if parsed_data["location"] in LOCATION_PRESETS:
         location_desc = LOCATION_PRESETS[parsed_data["location"]]
     else:
@@ -216,7 +379,6 @@ def generate_prompt(parsed_data, custom_details=""):
     
     lighting_desc = LIGHTING_PRESETS.get(parsed_data.get("lighting", "자연광"), LIGHTING_PRESETS["자연광"])
     
-    # 표정 + 추가 디테일 (한국어 변환)
     expression = EXPRESSION_PRESETS.get(parsed_data.get("expression", "자연스러운 미소"), "natural smile")
     if parsed_data.get("expression_detail"):
         expression += f", {translate_korean_to_english(parsed_data['expression_detail'])}"
@@ -225,11 +387,9 @@ def generate_prompt(parsed_data, custom_details=""):
     if parsed_data.get("neck") and parsed_data["neck"] in NECK_PRESETS:
         neck_desc = ", " + NECK_PRESETS[parsed_data["neck"]]
     
-    # 전체 추가 디테일도 변환
     if custom_details:
         custom_details = translate_korean_to_english(custom_details)
     
-    # 프롬프트를 여러 줄로 나눠서 생성 (한 줄당 20단어 이내)
     lines = [
         f"{camera}, Korean {gender} in {pronoun_pos} {age_en}",
         f"natural skin texture, minimal makeup{neck_desc}",
@@ -247,12 +407,50 @@ def generate_prompt(parsed_data, custom_details=""):
         lines.insert(-1, translate_korean_to_english(custom_details))
     
     prompt = "\n".join(lines)
-    
     return prompt
+
+
+def generate_video_prompt(scene_data, options):
+    """영상 프롬프트 생성"""
+    gender = "woman" if options.get('gender', '여성') == '여성' else "man"
+    pronoun = "She" if gender == "woman" else "He"
+    pronoun_pos = "her" if gender == "woman" else "his"
+    age = options.get('age', '26살')
+    product = options.get('product', 'snack bag')
+    
+    scene_num = scene_data.get('scene_num', 1)
+    action = scene_data.get('action', '')
+    dialogue = scene_data.get('dialogue', '')
+    
+    # 발음 변환 및 숫자 변환
+    dialogue = convert_pronunciation(dialogue)
+    dialogue = convert_numbers(dialogue)
+    
+    lines = [
+        f"Ultra-realistic cinematic 4K HDR 9:16 video of the same Korean {gender}, age {age}, from the reference image.",
+        f"Identical face, hairstyle, outfit, and background.",
+        "",
+        f"{action}",
+        "",
+        f'{pronoun} speaks in Korean:',
+        f'"{dialogue}"',
+        "",
+        f"Natural body language throughout.",
+        f"Bright, clean lighting.",
+        "",
+        f"No subtitles, on-screen text, music, background music, sound effects, or audio effects.",
+        f"Full 9:16 vertical format."
+    ]
+    
+    return "\n".join(lines)
+
+
+# ===== 라우트 정의 =====
 
 @app.route('/')
 def index():
     return render_template('index.html')
+
 
 @app.route('/generate', methods=['POST'])
 def generate():
@@ -267,6 +465,7 @@ def generate():
     prompt = generate_prompt(parsed, custom_details)
     
     return jsonify({'prompt': prompt, 'parsed': parsed})
+
 
 @app.route('/generate_custom', methods=['POST'])
 def generate_custom():
@@ -292,133 +491,6 @@ def generate_custom():
     
     return jsonify({'prompt': prompt, 'parsed': parsed})
 
-if __name__ == '__main__':
-    app.run(debug=True, port=5002)
-
-# 영상 프롬프트용 발음 변환
-PRONUNCIATION_CONVERT = {
-    "웨하스": "웨'하'스",
-    "바닐라": "바'닐'라",
-    "떴다": "떠따",
-    "미쳤다": "미쳐따",
-    "떴습니다": "떠씁니다",
-    "됐다": "돼따",
-    "했다": "해따",
-    "갔다": "가따",
-    "왔다": "와따",
-    "먹었다": "머거따",
-    "봤다": "봐따"
-}
-
-# 숫자 변환 - 고유어 (개수)
-NATIVE_KOREAN_NUMBERS = {
-    "1": "한", "2": "두", "3": "세", "4": "네", "5": "다섯",
-    "6": "여섯", "7": "일곱", "8": "여덟", "9": "아홉", "10": "열"
-}
-
-# 숫자 변환 - 한자어 (측정)
-SINO_KOREAN_NUMBERS = {
-    "1": "일", "2": "이", "3": "삼", "4": "사", "5": "오",
-    "6": "육", "7": "칠", "8": "팔", "9": "구", "10": "십",
-    "100": "백", "1000": "천", "10000": "만"
-}
-
-def convert_pronunciation(text):
-    """발음 변환"""
-    result = text
-    for kr, converted in PRONUNCIATION_CONVERT.items():
-        result = result.replace(kr, converted)
-    return result
-
-def convert_numbers(text):
-    """숫자를 한국어로 변환"""
-    import re
-    result = text
-    
-    # 고유어 단위 (개, 명, 봉지, 마리, 살, 잔, 그릇, 권, 켤레, 대)
-    native_units = ['개', '명', '봉지', '마리', '살', '잔', '그릇', '권', '켤레', '대', '시간']
-    for unit in native_units:
-        pattern = rf'(\d+)\s*{unit}'
-        matches = re.findall(pattern, result)
-        for num in matches:
-            if num in NATIVE_KOREAN_NUMBERS:
-                result = re.sub(rf'{num}\s*{unit}', f'{NATIVE_KOREAN_NUMBERS[num]} {unit}', result)
-    
-    # 한자어 단위 (kg, g, %, 원, 배, m, L, 도, 층)
-    sino_patterns = [
-        (r'(\d+)\s*kg', '킬로그램'),
-        (r'(\d+)\s*g', '그램'),
-        (r'(\d+)\s*%', '퍼센트'),
-        (r'(\d+)\s*원', '원'),
-        (r'(\d+)\s*배', '배'),
-        (r'(\d+)\s*ml', '밀리리터'),
-    ]
-    
-    for pattern, unit_name in sino_patterns:
-        matches = re.findall(pattern, result)
-        for num in matches:
-            num_str = num
-            if int(num) >= 100:
-                # 100 이상은 한자어로
-                converted = ""
-                n = int(num)
-                if n >= 10000:
-                    converted += f"{SINO_KOREAN_NUMBERS.get(str(n // 10000), str(n // 10000))}만"
-                    n = n % 10000
-                if n >= 1000:
-                    converted += f"{SINO_KOREAN_NUMBERS.get(str(n // 1000), '')}천"
-                    n = n % 1000
-                if n >= 100:
-                    converted += f"{SINO_KOREAN_NUMBERS.get(str(n // 100), '')}백"
-                    n = n % 100
-                if n >= 10:
-                    converted += f"{SINO_KOREAN_NUMBERS.get(str(n // 10), '')}십"
-                    n = n % 10
-                if n > 0:
-                    converted += SINO_KOREAN_NUMBERS.get(str(n), str(n))
-                result = re.sub(pattern.replace(r'(\d+)', num_str), f'{converted} {unit_name}', result)
-            elif num in SINO_KOREAN_NUMBERS:
-                result = re.sub(pattern.replace(r'(\d+)', num_str), f'{SINO_KOREAN_NUMBERS[num]} {unit_name}', result)
-    
-    # 1+1 -> 원플원
-    result = result.replace('1+1', '원플원')
-    result = result.replace('2+1', '투플원')
-    
-    return result
-
-def generate_video_prompt(scene_data, options):
-    """영상 프롬프트 생성"""
-    gender = "woman" if options.get('gender', '여성') == '여성' else "man"
-    pronoun = "She" if gender == "woman" else "He"
-    pronoun_pos = "her" if gender == "woman" else "his"
-    age = options.get('age', '26살')
-    product = options.get('product', 'snack bag')
-    
-    scene_num = scene_data.get('scene_num', 1)
-    action = scene_data.get('action', '')
-    dialogue = scene_data.get('dialogue', '')
-    
-    # 발음 변환 및 숫자 변환
-    dialogue = convert_pronunciation(dialogue)
-    dialogue = convert_numbers(dialogue)
-    
-    lines = [
-        f"Ultra-realistic cinematic 4K HDR 9:16 video of the same {gender} from the reference image.",
-        f"Identical face, hairstyle, outfit, and background.",
-        "",
-        f"{action}",
-        "",
-        f'{pronoun} speaks in Korean:',
-        f'"{dialogue}"',
-        "",
-        f"Natural body language throughout.",
-        f"Bright, clean lighting.",
-        "",
-        f"No subtitles, on-screen text, music, background music, sound effects, or audio effects.",
-        f"Full 9:16 vertical format."
-    ]
-    
-    return "\n".join(lines)
 
 @app.route('/generate_video', methods=['POST'])
 def generate_video():
@@ -439,7 +511,6 @@ def generate_video():
     for line in lines:
         line = line.strip()
         if line.startswith('#') and any(c.isdigit() for c in line):
-            # 새 씬 시작
             if current_scene:
                 scenes.append(current_scene)
             scene_num = ''.join(filter(str.isdigit, line.split()[0] if line.split() else '1'))
@@ -464,42 +535,6 @@ def generate_video():
     
     return jsonify({'prompts': prompts})
 
-# 한국어 → 영어 번역 (합성 프롬프트용)
-COMPOSITE_TRANSLATIONS = {
-    # 크기 관련
-    '과자봉지가 너무작아': 'make the snack bag much larger and more prominent',
-    '너무 작아': 'make it larger',
-    '더 크게': 'make it larger',
-    '크게': 'larger',
-    '작게': 'smaller',
-    # 손 관련
-    '두 손으로': 'holding with both hands',
-    '양손으로': 'holding with both hands',
-    '한 손으로': 'holding with one hand',
-    '왼손으로': 'holding with left hand',
-    '오른손으로': 'holding with right hand',
-    # 위치 관련
-    '얼굴 옆에': 'position the product next to the face',
-    '얼굴옆에': 'position the product next to the face',
-    '가슴 높이': 'at chest level',
-    '눈높이': 'at eye level',
-    '어깨 높이': 'at shoulder level',
-    # 개수 관련
-    '여러개': 'multiple products',
-    '여러 개': 'multiple products',
-    '두 개': 'two products',
-    '세 개': 'three products',
-    # 동작 관련
-    '들고있는': 'holding',
-    '보여주는': 'showing',
-    '가리키는': 'pointing at',
-    # 기타
-    '자연스럽게': 'naturally',
-    '예쁘게': 'beautifully',
-    '귀엽게': 'cutely',
-    '웃으면서': 'while smiling',
-    '카메라 보면서': 'while looking at camera'
-}
 
 @app.route('/translate', methods=['POST'])
 def translate():
@@ -509,16 +544,10 @@ def translate():
     if not text:
         return jsonify({'translated': ''})
     
-    result = text
-    # 긴 표현부터 먼저 변환
-    sorted_items = sorted(COMPOSITE_TRANSLATIONS.items(), key=lambda x: len(x[0]), reverse=True)
-    for kr, en in sorted_items:
-        result = result.replace(kr, en)
-    
-    # 아직 한국어가 남아있으면 기본 영어 문장으로 감싸기
-    import re
-    if re.search('[가-힣]', result):
-        # 한국어가 남아있으면 그냥 영어 설명으로 변환 시도
-        result = f"Additional detail: {result}"
-    
+    result = translate_composite_text(text)
     return jsonify({'translated': result})
+
+
+# ===== 앱 실행 =====
+if __name__ == '__main__':
+    app.run(debug=True, port=5002)
