@@ -1,0 +1,296 @@
+from flask import Flask, render_template, request, jsonify
+
+app = Flask(__name__)
+
+# 나이대 매핑
+AGE_MAPPING = {
+    "20대 초반": "early 20s",
+    "20대 중반": "mid 20s", 
+    "20대 후반": "late 20s",
+    "30대 초반": "early 30s",
+    "30대 중반": "mid 30s",
+    "30대 후반": "late 30s",
+    "40대 초반": "early 40s",
+    "40대 중반": "mid 40s",
+    "40대 후반": "late 40s",
+    "50대 초반": "early 50s",
+    "50대 중반": "mid 50s",
+    "50대 후반": "late 50s"
+}
+
+# 장소 프리셋
+LOCATION_PRESETS = {
+    "집 거실": "sitting on a cozy beige sofa in a modern Korean apartment living room",
+    "집 소파": "sitting comfortably on a soft gray sofa in a warm living room",
+    "주방": "standing in a bright white kitchen in the morning",
+    "카페": "sitting at a wooden table in a cozy Korean cafe with warm interior",
+    "공원": "standing in a peaceful park with green trees in the background",
+    "사무실": "sitting at a clean modern office desk",
+    "침실": "sitting on a neatly made bed in a bright bedroom",
+    "발코니": "standing on a sunny apartment balcony with plants",
+    "레스토랑": "sitting at a restaurant table with soft ambient lighting",
+    "헬스장": "standing in a modern gym with exercise equipment in background",
+    "요가원": "sitting on a yoga mat in a peaceful studio with natural light",
+    "길거리": "standing on a clean Seoul street with urban background",
+    "해변": "standing on a sandy beach with ocean in the background"
+}
+
+# 의상 프리셋
+CLOTHING_PRESETS = {
+    "흰색 스웻셔츠": "wearing a soft white cotton sweatshirt",
+    "흰색 린넨 탑": "wearing a soft white linen top",
+    "베이지 니트": "wearing a cozy beige knit sweater",
+    "검정 티셔츠": "wearing a simple black t-shirt",
+    "운동복": "wearing comfortable athletic wear",
+    "원피스": "wearing a casual one-piece dress",
+    "블라우스": "wearing an elegant blouse",
+    "가디건": "wearing a soft cardigan over a simple top",
+    "후드티": "wearing a comfortable hoodie",
+    "오프숄더": "wearing an elegant off-shoulder top",
+    "흰색 오프숄더": "wearing a white off-shoulder top",
+    "검정 오프숄더": "wearing a black off-shoulder top",
+    "승무원 유니폼": "wearing a professional flight attendant uniform with neat scarf",
+    "아나운서 스타일": "wearing a elegant news anchor style blazer and blouse, professional look",
+    "정장": "wearing a formal business suit",
+    "셔츠": "wearing a clean white dress shirt"
+}
+
+# 표정 프리셋
+EXPRESSION_PRESETS = {
+    "자연스러운 미소": "natural smile",
+    "밝은 미소": "bright warm smile",
+    "편안한 표정": "relaxed expression",
+    "살짝 웃는": "slight gentle smile",
+    "진지한": "calm focused expression"
+}
+
+# 조명 프리셋
+LIGHTING_PRESETS = {
+    "아침 햇살": "Warm soft morning sunlight from the window",
+    "자연광": "Soft natural daylight creates even gentle lighting",
+    "오후 햇살": "Warm afternoon sunlight creates a cozy golden glow",
+    "실내 조명": "Soft indoor ambient lighting",
+    "카페 조명": "Warm cafe lighting with soft shadows"
+}
+
+# 카메라 프리셋
+CAMERA_PRESETS = {
+    "아이폰 셀카": "Phone front camera selfie",
+    "아이폰 후면": "iPhone back camera photo",
+    "DSLR": "DSLR camera photo with shallow depth of field",
+    "미러리스": "Mirrorless camera photo with natural bokeh"
+}
+
+# 목주름 프리셋
+NECK_PRESETS = {
+    "자연스러운": "with natural subtle neck lines",
+    "목주름 있는": "with visible natural neck wrinkles",
+    "목주름 없는": "with smooth neck skin"
+}
+
+# 한국어 → 영어 자동 변환 (추가 디테일용)
+KOREAN_TO_ENGLISH = {
+    # 배경/장소 관련
+    "미니멀한 방안": "minimal room",
+    "미니멀한 방": "minimal room",
+    "미니멀한": "minimal",
+    "미니멀": "minimal",
+    "깔끔한 방": "clean room",
+    "깔끔한": "clean",
+    "화이트톤": "white tone",
+    "흰색 벽": "white wall",
+    "베이지톤": "beige tone",
+    "화분이 있는": "with plants",
+    "화분": "with plants",
+    "식물": "plants",
+    "책장": "bookshelf",
+    "따뜻한 느낌": "warm atmosphere",
+    "밝은 느낌": "bright atmosphere",
+    "모던한 느낌": "modern style",
+    "럭셔리한": "luxurious",
+    "심플한": "simple",
+    # 의상 관련
+    "파란색": "blue",
+    "빨간색": "red",
+    "검정색": "black",
+    "흰색": "white",
+    "베이지색": "beige",
+    "줄무늬": "striped",
+    "체크무늬": "checkered",
+    "꽃무늬": "floral pattern",
+    "레이스": "lace",
+    "실크": "silk",
+    "캐주얼한": "casual",
+    "포멀한": "formal",
+    # 표정/포즈 관련
+    "눈웃음": "smiling eyes",
+    "윙크": "winking",
+    "살짝 고개 기울인": "slightly tilted head",
+    "턱 괴고": "chin resting on hand",
+    "손 흔드는": "waving hand",
+    "브이": "V sign",
+    "하트": "heart gesture",
+    # 카메라 관련
+    "클로즈업": "close-up shot",
+    "상반신샷": "upper body shot",
+    "상반신": "upper body shot",
+    "전신샷": "full body shot",
+    "전신": "full body shot",
+    # 기타
+    "자연스럽게": "naturally",
+    "편안하게": "comfortably",
+    "고급스럽게": "elegantly"
+}
+
+def translate_korean_to_english(text):
+    """한국어 텍스트를 영어로 변환 - 긴 표현부터 먼저 변환"""
+    if not text:
+        return text
+    result = text
+    # 긴 표현부터 먼저 변환 (순서 중요)
+    sorted_items = sorted(KOREAN_TO_ENGLISH.items(), key=lambda x: len(x[0]), reverse=True)
+    for kr, en in sorted_items:
+        result = result.replace(kr, en)
+    return result
+
+def parse_korean_input(user_input):
+    result = {
+        "gender": "여성",
+        "age": "40대 초반",
+        "clothing": "",
+        "location": "",
+        "expression": "자연스러운 미소",
+        "lighting": "자연광",
+        "camera": "아이폰 셀카",
+        "neck": ""
+    }
+    
+    if "남자" in user_input or "남성" in user_input:
+        result["gender"] = "남성"
+    
+    for age_kr in AGE_MAPPING.keys():
+        if age_kr in user_input:
+            result["age"] = age_kr
+            break
+    
+    for loc_kr in LOCATION_PRESETS.keys():
+        if loc_kr in user_input or loc_kr.replace(" ", "") in user_input.replace(" ", ""):
+            result["location"] = loc_kr
+            break
+    
+    for cloth_kr in CLOTHING_PRESETS.keys():
+        if cloth_kr in user_input or cloth_kr.replace(" ", "") in user_input.replace(" ", ""):
+            result["clothing"] = cloth_kr
+            break
+    
+    return result
+
+def generate_prompt(parsed_data, custom_details=""):
+    age_en = AGE_MAPPING.get(parsed_data["age"], "early 40s")
+    gender = "woman" if parsed_data.get("gender", "여성") == "여성" else "man"
+    pronoun = "She" if gender == "woman" else "He"
+    pronoun_pos = "her" if gender == "woman" else "his"
+    
+    # 카메라 + 추가 디테일 (한국어 변환)
+    camera = CAMERA_PRESETS.get(parsed_data.get("camera", "아이폰 셀카"), CAMERA_PRESETS["아이폰 셀카"])
+    if parsed_data.get("camera_detail"):
+        camera += f", {translate_korean_to_english(parsed_data['camera_detail'])}"
+    
+    # 의상 + 추가 디테일 (한국어 변환)
+    if parsed_data["clothing"] in CLOTHING_PRESETS:
+        clothing_desc = CLOTHING_PRESETS[parsed_data["clothing"]]
+    elif parsed_data["clothing"]:
+        clothing_desc = f"wearing {parsed_data['clothing']}"
+    else:
+        clothing_desc = "wearing casual comfortable clothing"
+    if parsed_data.get("clothing_detail"):
+        clothing_desc += f", {translate_korean_to_english(parsed_data['clothing_detail'])}"
+    
+    # 장소 + 추가 디테일 (한국어 변환)
+    if parsed_data["location"] in LOCATION_PRESETS:
+        location_desc = LOCATION_PRESETS[parsed_data["location"]]
+    else:
+        location_desc = "in a bright modern Korean home"
+    if parsed_data.get("location_detail"):
+        location_desc += f", {translate_korean_to_english(parsed_data['location_detail'])}"
+    
+    lighting_desc = LIGHTING_PRESETS.get(parsed_data.get("lighting", "자연광"), LIGHTING_PRESETS["자연광"])
+    
+    # 표정 + 추가 디테일 (한국어 변환)
+    expression = EXPRESSION_PRESETS.get(parsed_data.get("expression", "자연스러운 미소"), "natural smile")
+    if parsed_data.get("expression_detail"):
+        expression += f", {translate_korean_to_english(parsed_data['expression_detail'])}"
+    
+    neck_desc = ""
+    if parsed_data.get("neck") and parsed_data["neck"] in NECK_PRESETS:
+        neck_desc = ", " + NECK_PRESETS[parsed_data["neck"]]
+    
+    # 전체 추가 디테일도 변환
+    if custom_details:
+        custom_details = translate_korean_to_english(custom_details)
+    
+    # 프롬프트를 여러 줄로 나눠서 생성 (한 줄당 20단어 이내)
+    lines = [
+        f"{camera}, Korean {gender} in {pronoun_pos} {age_en}",
+        f"natural skin texture, minimal makeup{neck_desc}",
+        f"{clothing_desc}",
+        f"{location_desc}",
+        f"looking directly at camera, relaxed natural posture",
+        f"{lighting_desc}",
+        f"clean minimal background, airy atmosphere",
+        f"candid relaxed {expression}",
+        f"photo-realistic, high-resolution, no motion blur",
+        f"vertical 9:16 aspect ratio for Instagram Reels"
+    ]
+    
+    if custom_details:
+        lines.insert(-1, translate_korean_to_english(custom_details))
+    
+    prompt = "\n".join(lines)
+    
+    return prompt
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/generate', methods=['POST'])
+def generate():
+    data = request.json
+    user_input = data.get('input', '')
+    custom_details = data.get('custom_details', '')
+    
+    if not user_input:
+        return jsonify({'error': '입력을 해주세요'}), 400
+    
+    parsed = parse_korean_input(user_input)
+    prompt = generate_prompt(parsed, custom_details)
+    
+    return jsonify({'prompt': prompt, 'parsed': parsed})
+
+@app.route('/generate_custom', methods=['POST'])
+def generate_custom():
+    data = request.json
+    
+    parsed = {
+        "gender": data.get('gender', '여성'),
+        "age": data.get('age', '40대 초반'),
+        "clothing": data.get('clothing', ''),
+        "location": data.get('location', ''),
+        "expression": data.get('expression', '자연스러운 미소'),
+        "lighting": data.get('lighting', '자연광'),
+        "camera": data.get('camera', '아이폰 셀카'),
+        "neck": data.get('neck', ''),
+        "camera_detail": data.get('camera_detail', ''),
+        "clothing_detail": data.get('clothing_detail', ''),
+        "location_detail": data.get('location_detail', ''),
+        "expression_detail": data.get('expression_detail', '')
+    }
+    
+    custom_details = data.get('custom_details', '')
+    prompt = generate_prompt(parsed, custom_details)
+    
+    return jsonify({'prompt': prompt, 'parsed': parsed})
+
+if __name__ == '__main__':
+    app.run(debug=True, port=5002)
