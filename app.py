@@ -590,41 +590,75 @@ def generate_custom():
     
     custom_details = data.get('custom_details', '')
     
-    # 한국어 디테일이 있으면 Gemini로 번역
-    all_details = []
-    if parsed.get('camera_detail'):
-        all_details.append(f"카메라: {parsed['camera_detail']}")
-    if parsed.get('clothing_detail'):
-        all_details.append(f"의상: {parsed['clothing_detail']}")
-    if parsed.get('location_detail'):
-        all_details.append(f"배경: {parsed['location_detail']}")
-    if parsed.get('expression_detail'):
-        all_details.append(f"표정: {parsed['expression_detail']}")
-    if custom_details:
-        all_details.append(f"기타: {custom_details}")
+    # 한국어 디테일이 있으면 Gemini로 전체 프롬프트 생성
+    has_korean_details = any([
+        parsed.get('camera_detail'),
+        parsed.get('clothing_detail'),
+        parsed.get('location_detail'),
+        parsed.get('expression_detail'),
+        custom_details
+    ])
     
-    translated_details = ""
-    if all_details:
+    if has_korean_details:
         try:
-            detail_text = "\n".join(all_details)
-            translate_prompt = f"""다음 한국어 이미지 설명을 영어로 번역해주세요.
-자연스러운 영어 문장으로 변환하고, 이미지 프롬프트에 적합한 형태로 작성해주세요.
-각 항목을 쉼표로 구분된 하나의 문장으로 만들어주세요.
+            gender_en = "woman" if parsed['gender'] == '여성' else "man"
+            age_en = AGE_MAPPING.get(parsed['age'], 'early 40s')
+            
+            detail_parts = []
+            if parsed.get('camera_detail'):
+                detail_parts.append(f"카메라 추가: {parsed['camera_detail']}")
+            if parsed.get('clothing_detail'):
+                detail_parts.append(f"의상 추가: {parsed['clothing_detail']}")
+            if parsed.get('location_detail'):
+                detail_parts.append(f"배경 추가: {parsed['location_detail']}")
+            if parsed.get('expression_detail'):
+                detail_parts.append(f"표정 추가: {parsed['expression_detail']}")
+            if custom_details:
+                detail_parts.append(f"기타: {custom_details}")
+            
+            detail_text = "\n".join(detail_parts)
+            
+            ai_prompt = f"""AI 인플루언서 이미지 생성 프롬프트를 만들어주세요.
 
-한국어:
+## 기본 설정:
+- 성별: Korean {gender_en}
+- 나이: {age_en}
+- 카메라: {CAMERA_PRESETS.get(parsed['camera'], 'Phone front camera selfie')}
+- 의상: {CLOTHING_PRESETS.get(parsed['clothing'], 'casual comfortable clothing')}
+- 배경: {LOCATION_PRESETS.get(parsed['location'], 'bright modern Korean home')}
+- 목주름: {NECK_PRESETS.get(parsed['neck'], '')}
+- 표정: {EXPRESSION_PRESETS.get(parsed['expression'], 'natural smile')}
+- 조명: {LIGHTING_PRESETS.get(parsed['lighting'], 'Soft natural daylight')}
+
+## 사용자 추가 요청 (한국어 → 영어로 자연스럽게 변환):
 {detail_text}
 
-영어 번역 (프롬프트 형식으로):"""
+## 출력 규칙:
+1. 모든 내용을 영어로 작성
+2. 한 줄당 최대 20단어
+3. 여러 줄로 나눠서 작성
+4. 마지막에 반드시 "vertical 9:16 aspect ratio for Instagram Reels" 포함
+5. 피부는 자연스럽게 (natural skin texture with visible pores, NOT plastic or CGI)
+6. photo-realistic, high-resolution 포함
+
+프롬프트만 출력하세요 (설명 없이):"""
+
+            response = gemini_model.generate_content(ai_prompt)
+            prompt = response.text.strip()
             
-            response = gemini_model.generate_content(translate_prompt)
-            translated_details = response.text.strip()
-        except:
-            # 실패시 기존 방식 사용
-            translated_details = translate_korean_to_english(custom_details)
-    
-    prompt = generate_prompt(parsed, translated_details)
-    
-    return jsonify({'prompt': prompt, 'parsed': parsed})
+            # 코드블록 제거
+            if prompt.startswith('```'):
+                prompt = '\n'.join(prompt.split('\n')[1:-1])
+            
+            return jsonify({'prompt': prompt, 'parsed': parsed})
+            
+        except Exception as e:
+            # 실패시 기존 방식
+            prompt = generate_prompt(parsed, custom_details)
+            return jsonify({'prompt': prompt, 'parsed': parsed})
+    else:
+        prompt = generate_prompt(parsed, custom_details)
+        return jsonify({'prompt': prompt, 'parsed': parsed})
 
 
 @app.route('/generate_video', methods=['POST'])
