@@ -645,35 +645,52 @@ def generate_video():
     system_prompt = f"""당신은 AI 영상 생성 프롬프트 전문가입니다.
 사용자가 한국어 기획안을 주면, 각 씬(#1, #2 등)별로 영상 생성 프롬프트를 만들어주세요.
 
-## 규칙:
-1. 각 씬마다 별도의 프롬프트 생성
+## 핵심 원칙:
+1. 각 씬마다 별도의 프롬프트 생성 (8초 영상 기준)
 2. 프롬프트는 영어로 작성 (대사 부분만 한국어 유지)
 3. 한 줄당 최대 20단어
 4. 9:16 세로 영상 포맷
+5. 기획안의 상황/액션/감정을 정확히 파악해서 영어로 자연스럽게 표현
 
 ## 대사 변환 규칙 (매우 중요!):
-- 숫자+개/명/봉지/마리 → 고유어 (1개→한 개, 3봉지→세 봉지)
-- 숫자+kg/g/%/원 → 한자어 (3kg→삼 킬로그램, 5000원→오천 원)
+### 숫자 변환:
+- 고유어 단위 (개, 명, 봉지, 마리, 살, 잔): 1→한, 2→두, 3→세, 4→네, 5→다섯
+  예: 1개→한 개, 3봉지→세 봉지, 2명→두 명
+- 한자어 단위 (kg, g, %, 원, 배, ml): 1→일, 2→이, 3→삼, 100→백, 1000→천
+  예: 3kg→삼 킬로그램, 5000원→오천 원, 100%→백 퍼센트
 - 1+1 → 원플원, 2+1 → 투플원
-- 웨하스 → 웨'하'스, 바닐라 → 바'닐'라
-- 떴다 → 떠따, 됐다 → 돼따, 했다 → 해따
+
+### 발음 변환:
+- 웨하스 → 웨'하'스
+- 바닐라 → 바'닐'라  
+- 떴다 → 떠따, 됐다 → 돼따, 했다 → 해따, 갔다 → 가따
+- 먹었다 → 머거따, 봤다 → 봐따
 
 ## 인물 정보:
 - 성별: Korean {gender_en}
 - 나이: {options['age']}
 - 제품: {options['product']}
 
-## 출력 형식 (각 씬마다):
-```
+## 액션/연출 변환 예시:
+- "뛰어들어온다" → runs into frame energetically
+- "클로즈업" → close-up shot of
+- "과자를 보여주면서" → while showing the snack product
+- "놀란 표정" → with a surprised expression
+- "카메라 안보이다가 등장" → starting off-camera, then enters the frame
+- "손가락으로 가리키면서" → pointing with finger
+- "자랑하듯이" → proudly presenting
+- "맛있게 먹는다" → eats deliciously with enjoyment
+
+## 출력 형식 (각 씬마다 반드시 이 형식으로):
 [SCENE_1]
 Ultra-realistic cinematic 4K HDR 9:16 video.
 Korean {gender_en}, age {options['age']}, from the reference image.
 Identical face, hairstyle, outfit, and background.
 
-(여기에 액션/카메라 워크 설명 - 영어로)
+(기획안의 액션/연출을 영어로 자연스럽게 설명)
 
 {pronoun} speaks naturally in Korean:
-"(변환된 한국어 대사)"
+"(숫자/발음 변환된 한국어 대사)"
 
 Natural body language throughout.
 Bright, clean lighting.
@@ -681,10 +698,13 @@ Bright, clean lighting.
 No subtitles, on-screen text, music, background music, sound effects, or audio effects.
 Full 9:16 vertical format.
 [/SCENE_1]
-```
 
-기획안의 괄호() 안 내용은 액션/연출 지시이고, 나머지는 대사입니다.
-액션은 영어로 자연스럽게 변환하세요 (예: "뛰어들어온다" → "runs into frame energetically").
+## 중요:
+- 기획안의 괄호() 안 내용은 액션/연출 지시입니다
+- 괄호 밖 내용은 대사입니다
+- 액션은 상황에 맞게 구체적으로 영어로 변환하세요
+- 대사는 숫자/발음 변환 규칙을 적용한 한국어로 유지하세요
+- 각 씬의 분위기와 감정을 잘 살려주세요
 """
 
     user_prompt = f"다음 기획안을 씬별 영상 프롬프트로 변환해주세요:\n\n{plan_text}"
