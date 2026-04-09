@@ -589,7 +589,40 @@ def generate_custom():
     }
     
     custom_details = data.get('custom_details', '')
-    prompt = generate_prompt(parsed, custom_details)
+    
+    # 한국어 디테일이 있으면 Gemini로 번역
+    all_details = []
+    if parsed.get('camera_detail'):
+        all_details.append(f"카메라: {parsed['camera_detail']}")
+    if parsed.get('clothing_detail'):
+        all_details.append(f"의상: {parsed['clothing_detail']}")
+    if parsed.get('location_detail'):
+        all_details.append(f"배경: {parsed['location_detail']}")
+    if parsed.get('expression_detail'):
+        all_details.append(f"표정: {parsed['expression_detail']}")
+    if custom_details:
+        all_details.append(f"기타: {custom_details}")
+    
+    translated_details = ""
+    if all_details:
+        try:
+            detail_text = "\n".join(all_details)
+            translate_prompt = f"""다음 한국어 이미지 설명을 영어로 번역해주세요.
+자연스러운 영어 문장으로 변환하고, 이미지 프롬프트에 적합한 형태로 작성해주세요.
+각 항목을 쉼표로 구분된 하나의 문장으로 만들어주세요.
+
+한국어:
+{detail_text}
+
+영어 번역 (프롬프트 형식으로):"""
+            
+            response = gemini_model.generate_content(translate_prompt)
+            translated_details = response.text.strip()
+        except:
+            # 실패시 기존 방식 사용
+            translated_details = translate_korean_to_english(custom_details)
+    
+    prompt = generate_prompt(parsed, translated_details)
     
     return jsonify({'prompt': prompt, 'parsed': parsed})
 
@@ -695,8 +728,24 @@ def translate():
     if not text:
         return jsonify({'translated': ''})
     
-    result = translate_composite_text(text)
-    return jsonify({'translated': result})
+    # Gemini로 번역
+    try:
+        translate_prompt = f"""다음 한국어를 영어로 번역해주세요.
+이미지 합성 프롬프트에 사용될 내용입니다.
+자연스러운 영어 문장으로 변환해주세요.
+번역 결과만 출력하세요.
+
+한국어: {text}
+
+영어:"""
+        
+        response = gemini_model.generate_content(translate_prompt)
+        result = response.text.strip()
+        return jsonify({'translated': result})
+    except Exception as e:
+        # 실패시 기존 방식 사용
+        result = translate_composite_text(text)
+        return jsonify({'translated': result})
 
 
 # ===== 앱 실행 =====
