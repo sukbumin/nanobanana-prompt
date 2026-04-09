@@ -153,6 +153,72 @@ PRONUNCIATION_CONVERT = {
     "봤다": "봐따"
 }
 
+# 영상 액션 변환 (한국어 → 영어)
+VIDEO_ACTION_MAPPING = {
+    # 등장/이동
+    "뛰어들어온다": "runs into frame energetically",
+    "뛰어들어와서": "runs into frame energetically",
+    "뛰어들어와": "runs into frame",
+    "등장함": "appears on screen",
+    "등장한다": "appears on screen",
+    "들어온다": "enters the frame",
+    "나타난다": "appears",
+    "오른쪽에서": "from the right side",
+    "왼쪽에서": "from the left side",
+    "위에서": "from above",
+    "아래에서": "from below",
+    "카메라 안보이다가": "starting off-camera then",
+    # 카메라 워크
+    "클로즈업": "close-up shot",
+    "클로즈업하면서": "with a close-up shot",
+    "줌인": "zoom in",
+    "줌아웃": "zoom out",
+    "상반신": "upper body shot",
+    "전신": "full body shot",
+    "얼굴 클로즈업": "face close-up",
+    # 제품 관련
+    "과자를 클로즈업하면서 보여주기": "showing the snack with a close-up shot",
+    "과자를 보여주기": "showing the snack",
+    "과자봉지 들고": "holding the snack bag",
+    "과자봉지 한 봉지 들고": "holding one snack bag",
+    "제품을 보여주면서": "while showing the product",
+    "제품 들고": "holding the product",
+    "한손가락으로 콕콕 가리키면서": "pointing at it with finger",
+    "가리키면서": "while pointing at",
+    "자랑하기": "proudly presenting",
+    # 표정/감정
+    "놀란거같이": "with a surprised expression",
+    "놀란 표정": "surprised expression",
+    "신난 표정": "excited expression",
+    "웃으면서": "while smiling",
+    "밝게 웃으면서": "smiling brightly",
+    "진지하게": "seriously",
+    "귀엽게": "cutely",
+    # 동작
+    "이야기한다": "talks to camera",
+    "이야기하면서": "while talking",
+    "말한다": "speaks",
+    "설명한다": "explains",
+    "먹는다": "eats",
+    "먹으면서": "while eating",
+    "맛있게 먹는다": "eats deliciously",
+    "손 흔들면서": "while waving hand",
+    "손 흔든다": "waves hand",
+    "고개 끄덕이면서": "while nodding",
+    "앉아있다": "sitting",
+    "서있다": "standing",
+    "걸어온다": "walks in",
+    "다가온다": "approaches",
+    # 시선
+    "카메라 보면서": "looking at camera",
+    "카메라를 보면서": "looking at camera",
+    "정면 응시": "looking straight at camera",
+    # 기타
+    "처음에는": "at first",
+    "그리고": "then",
+    "할때": "when saying"
+}
+
 # 숫자 변환 - 고유어 (개수)
 NATIVE_KOREAN_NUMBERS = {
     "1": "한", "2": "두", "3": "세", "4": "네", "5": "다섯",
@@ -410,6 +476,26 @@ def generate_prompt(parsed_data, custom_details=""):
     return prompt
 
 
+def convert_action_to_english(action_text):
+    """한국어 액션 설명을 영어로 변환"""
+    if not action_text:
+        return ""
+    
+    result = action_text.strip()
+    
+    # 긴 표현부터 먼저 변환
+    sorted_items = sorted(VIDEO_ACTION_MAPPING.items(), key=lambda x: len(x[0]), reverse=True)
+    for kr, en in sorted_items:
+        result = result.replace(kr, en)
+    
+    # 남은 한국어가 있으면 기본 문장으로 감싸기
+    if re.search('[가-힣]', result):
+        # 일부 변환된 경우 그대로 사용
+        return f"Action: {result}"
+    
+    return result
+
+
 def generate_video_prompt(scene_data, options):
     """영상 프롬프트 생성"""
     gender = "woman" if options.get('gender', '여성') == '여성' else "man"
@@ -422,17 +508,27 @@ def generate_video_prompt(scene_data, options):
     action = scene_data.get('action', '')
     dialogue = scene_data.get('dialogue', '')
     
+    # 액션을 영어로 변환
+    action_en = convert_action_to_english(action)
+    
     # 발음 변환 및 숫자 변환
     dialogue = convert_pronunciation(dialogue)
     dialogue = convert_numbers(dialogue)
     
     lines = [
-        f"Ultra-realistic cinematic 4K HDR 9:16 video of the same Korean {gender}, age {age}, from the reference image.",
+        f"Ultra-realistic cinematic 4K HDR 9:16 video.",
+        f"Korean {gender}, age {age}, from the reference image.",
         f"Identical face, hairstyle, outfit, and background.",
+    ]
+    
+    # 액션이 있으면 추가
+    if action_en:
+        lines.append("")
+        lines.append(action_en)
+    
+    lines.extend([
         "",
-        f"{action}",
-        "",
-        f'{pronoun} speaks in Korean:',
+        f'{pronoun} speaks naturally in Korean:',
         f'"{dialogue}"',
         "",
         f"Natural body language throughout.",
@@ -440,7 +536,7 @@ def generate_video_prompt(scene_data, options):
         "",
         f"No subtitles, on-screen text, music, background music, sound effects, or audio effects.",
         f"Full 9:16 vertical format."
-    ]
+    ])
     
     return "\n".join(lines)
 
