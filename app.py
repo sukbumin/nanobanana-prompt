@@ -1,17 +1,16 @@
 from flask import Flask, render_template, request, jsonify
 import re
 import os
-import google.generativeai as genai
+from openai import OpenAI
 
 app = Flask(__name__)
 
-# Gemini API 설정 (환경변수에서 가져오기)
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-    gemini_model = genai.GenerativeModel('gemini-1.5-flash-latest')
+# OpenAI API 설정 (환경변수에서 가져오기)
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
+if OPENAI_API_KEY:
+    openai_client = OpenAI(api_key=OPENAI_API_KEY)
 else:
-    gemini_model = None
+    openai_client = None
 
 # 나이대 매핑
 AGE_MAPPING = {
@@ -594,7 +593,7 @@ def generate_custom():
     
     custom_details = data.get('custom_details', '')
     
-    # 한국어 디테일이 있으면 Gemini로 전체 프롬프트 생성
+    # 한국어 디테일이 있으면 OpenAI로 전체 프롬프트 생성
     has_korean_details = any([
         parsed.get('camera_detail'),
         parsed.get('clothing_detail'),
@@ -603,7 +602,7 @@ def generate_custom():
         custom_details
     ])
     
-    if has_korean_details:
+    if has_korean_details and openai_client:
         try:
             gender_en = "woman" if parsed['gender'] == '여성' else "man"
             age_en = AGE_MAPPING.get(parsed['age'], 'early 40s')
@@ -647,8 +646,11 @@ def generate_custom():
 
 프롬프트만 출력하세요 (설명 없이):"""
 
-            response = gemini_model.generate_content(ai_prompt)
-            prompt = response.text.strip()
+            response = openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": ai_prompt}]
+            )
+            prompt = response.choices[0].message.content.strip()
             
             # 코드블록 제거
             if prompt.startswith('```'):
@@ -676,7 +678,10 @@ def generate_video():
         'product': data.get('product', 'snack bag')
     }
     
-    # Gemini AI로 프롬프트 생성
+    if not openai_client:
+        return jsonify({'error': 'API not configured', 'success': False}), 500
+    
+    # OpenAI로 프롬프트 생성
     gender_en = "woman" if options['gender'] == '여성' else "man"
     pronoun = "She" if gender_en == "woman" else "He"
     
@@ -748,11 +753,15 @@ Full 9:16 vertical format.
     user_prompt = f"다음 기획안을 씬별 영상 프롬프트로 변환해주세요:\n\n{plan_text}"
     
     try:
-        response = gemini_model.generate_content([
-            {"role": "user", "parts": [system_prompt + "\n\n" + user_prompt]}
-        ])
+        response = openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ]
+        )
         
-        ai_response = response.text
+        ai_response = response.choices[0].message.content
         
         # 씬별로 파싱
         prompts = []
@@ -786,19 +795,20 @@ def translate():
     if not text:
         return jsonify({'translated': ''})
     
-    # Gemini로 번역
+    if not openai_client:
+        result = translate_composite_text(text)
+        return jsonify({'translated': result})
+    
+    # OpenAI로 번역
     try:
-        translate_prompt = f"""다음 한국어를 영어로 번역해주세요.
-이미지 합성 프롬프트에 사용될 내용입니다.
-자연스러운 영어 문장으로 변환해주세요.
-번역 결과만 출력하세요.
-
-한국어: {text}
-
-영어:"""
-        
-        response = gemini_model.generate_content(translate_prompt)
-        result = response.text.strip()
+        response = openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{
+                "role": "user", 
+                "content": f"다음 한국어를 영어로 번역해주세요. 이미지 합성 프롬프트에 사용될 내용입니다. 번역 결과만 출력하세요.\n\n한국어: {text}\n\n영어:"
+            }]
+        )
+        result = response.choices[0].message.content.strip()
         return jsonify({'translated': result})
     except Exception as e:
         # 실패시 기존 방식 사용
