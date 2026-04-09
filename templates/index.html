@@ -26,8 +26,6 @@
         .option-group label { display: block; margin-bottom: 5px; color: #555; font-size: 0.85em; font-weight: 500; }
         .option-group select, .option-group input { padding: 10px; border: 1px solid #ddd; border-radius: 8px; }
         .options-toggle { background: none; border: none; color: #f5a623; cursor: pointer; margin-top: 10px; }
-        .detailed-options { display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; }
-        .detailed-options.show { display: block; }
         .result-card { display: none; }
         .result-card.show { display: block; }
         .result-box { background: #f8f9fa; border-radius: 12px; padding: 15px; position: relative; margin-bottom: 15px; }
@@ -71,30 +69,32 @@
         <!-- 탭 1: 실제 사람처럼 만들기 -->
         <div id="tab-person" class="tab-content active">
             <div class="card">
-                <h2>✍️ 원하는 이미지를 설명해주세요</h2>
+                <h2>⚡ 빠른 생성</h2>
                 <input type="text" class="simple-input" id="simpleInput" placeholder="예: 40대 흰색 스웻셔츠 입고 소파에 앉아있는 여성">
                 <div class="example-chips">
                     <span class="example-chip" onclick="useExample(this)">40대 흰색 스웻셔츠 입고 소파에 앉아있는 여성</span>
                     <span class="example-chip" onclick="useExample(this)">30대 베이지 니트 입고 카페에서</span>
                     <span class="example-chip" onclick="useExample(this)">20대 남성 검정 티셔츠 헬스장</span>
                 </div>
-                <button class="options-toggle" onclick="toggleOptions()">⚙️ 상세 옵션</button>
-                <div class="detailed-options" id="detailedOptions">
-                    <div class="option-grid">
-                        <div class="option-group"><label>🧑 성별</label><select id="genderSelect"><option value="여성">여성</option><option value="남성">남성</option></select></div>
-                        <div class="option-group"><label>👤 나이대</label><select id="ageSelect"><option value="20대 초반">20대 초반</option><option value="20대 중반">20대 중반</option><option value="20대 후반">20대 후반</option><option value="30대 초반">30대 초반</option><option value="30대 중반">30대 중반</option><option value="30대 후반">30대 후반</option><option value="40대 초반" selected>40대 초반</option><option value="40대 중반">40대 중반</option><option value="40대 후반">40대 후반</option><option value="50대 초반">50대 초반</option><option value="50대 중반">50대 중반</option><option value="50대 후반">50대 후반</option></select></div>
-                        <div class="option-group"><label>📷 카메라</label><select id="cameraSelect"><option value="아이폰 셀카">아이폰 셀카</option><option value="아이폰 후면">아이폰 후면</option><option value="DSLR">DSLR</option><option value="미러리스">미러리스</option></select><input type="text" id="cameraCustom" placeholder="추가 디테일" style="margin-top:5px;"></div>
-                        <div class="option-group"><label>👕 의상</label><select id="clothingSelect"><option value="">선택 안함</option><option value="흰색 스웻셔츠">흰색 스웻셔츠</option><option value="베이지 니트">베이지 니트</option><option value="검정 티셔츠">검정 티셔츠</option><option value="운동복">운동복</option><option value="원피스">원피스</option><option value="블라우스">블라우스</option><option value="오프숄더">오프숄더</option><option value="승무원 유니폼">승무원 유니폼</option><option value="아나운서 스타일">아나운서 스타일</option><option value="정장">정장</option></select><input type="text" id="clothingCustom" placeholder="추가 디테일" style="margin-top:5px;"></div>
-                        <div class="option-group"><label>📍 배경</label><select id="locationSelect"><option value="">선택 안함</option><option value="집 거실">집 거실</option><option value="집 소파">집 소파</option><option value="주방">주방</option><option value="카페">카페</option><option value="공원">공원</option><option value="사무실">사무실</option><option value="레스토랑">레스토랑</option><option value="헬스장">헬스장</option><option value="해변">해변</option></select><input type="text" id="locationCustom" placeholder="추가 디테일" style="margin-top:5px;"></div>
-                        <div class="option-group"><label>🦢 목주름</label><select id="neckSelect"><option value="">선택 안함</option><option value="자연스러운">자연스러운</option><option value="목주름 있는">목주름 있는</option><option value="목주름 없는">목주름 없는</option></select></div>
-                        <div class="option-group"><label>😊 표정</label><select id="expressionSelect"><option value="자연스러운 미소">자연스러운 미소</option><option value="밝은 미소">밝은 미소</option><option value="편안한 표정">편안한 표정</option><option value="진지한">진지한</option></select><input type="text" id="expressionCustom" placeholder="추가 디테일" style="margin-top:5px;"></div>
-                        <div class="option-group"><label>💡 조명</label><select id="lightingSelect"><option value="자연광">자연광</option><option value="아침 햇살">아침 햇살</option><option value="오후 햇살">오후 햇살</option><option value="실내 조명">실내 조명</option></select></div>
-                    </div>
-                    <div style="margin-top:10px;"><label style="font-size:0.85em;color:#555;">📝 추가 디테일</label><textarea id="customDetails" style="min-height:60px;margin-top:5px;" placeholder="예: 손에 빨간색 스낵 파우치를 들고 있음"></textarea></div>
-                    <button class="btn-generate" onclick="generateCustom()">🎨 상세 옵션으로 생성</button>
-                </div>
-                <button class="btn-generate" onclick="generateSimple()">🎨 프롬프트 생성하기</button>
+                <button class="btn-generate" style="background: linear-gradient(135deg, #6c757d, #868e96);" onclick="generateSimple()">⚡ 빠른 생성</button>
             </div>
+            
+            <div class="card">
+                <h2>🎨 상세 옵션</h2>
+                <div class="option-grid">
+                    <div class="option-group"><label>🧑 성별</label><select id="genderSelect"><option value="여성">여성</option><option value="남성">남성</option></select></div>
+                    <div class="option-group"><label>👤 나이대</label><select id="ageSelect"><option value="20대 초반">20대 초반</option><option value="20대 중반">20대 중반</option><option value="20대 후반">20대 후반</option><option value="30대 초반">30대 초반</option><option value="30대 중반">30대 중반</option><option value="30대 후반">30대 후반</option><option value="40대 초반" selected>40대 초반</option><option value="40대 중반">40대 중반</option><option value="40대 후반">40대 후반</option><option value="50대 초반">50대 초반</option><option value="50대 중반">50대 중반</option><option value="50대 후반">50대 후반</option></select></div>
+                    <div class="option-group"><label>📷 카메라</label><select id="cameraSelect"><option value="아이폰 셀카">아이폰 셀카</option><option value="아이폰 후면">아이폰 후면</option><option value="DSLR">DSLR</option><option value="미러리스">미러리스</option></select><input type="text" id="cameraCustom" placeholder="추가 디테일" style="margin-top:5px;"></div>
+                    <div class="option-group"><label>👕 의상</label><select id="clothingSelect"><option value="">선택 안함</option><option value="흰색 스웻셔츠">흰색 스웻셔츠</option><option value="베이지 니트">베이지 니트</option><option value="검정 티셔츠">검정 티셔츠</option><option value="운동복">운동복</option><option value="원피스">원피스</option><option value="블라우스">블라우스</option><option value="오프숄더">오프숄더</option><option value="승무원 유니폼">승무원 유니폼</option><option value="아나운서 스타일">아나운서 스타일</option><option value="정장">정장</option></select><input type="text" id="clothingCustom" placeholder="추가 디테일" style="margin-top:5px;"></div>
+                    <div class="option-group"><label>📍 배경</label><select id="locationSelect"><option value="">선택 안함</option><option value="집 거실">집 거실</option><option value="집 소파">집 소파</option><option value="주방">주방</option><option value="카페">카페</option><option value="공원">공원</option><option value="사무실">사무실</option><option value="레스토랑">레스토랑</option><option value="헬스장">헬스장</option><option value="해변">해변</option></select><input type="text" id="locationCustom" placeholder="추가 디테일" style="margin-top:5px;"></div>
+                    <div class="option-group"><label>🦢 목주름</label><select id="neckSelect"><option value="">선택 안함</option><option value="자연스러운">자연스러운</option><option value="목주름 있는">목주름 있는</option><option value="목주름 없는">목주름 없는</option></select></div>
+                    <div class="option-group"><label>😊 표정</label><select id="expressionSelect"><option value="자연스러운 미소">자연스러운 미소</option><option value="밝은 미소">밝은 미소</option><option value="편안한 표정">편안한 표정</option><option value="진지한">진지한</option></select><input type="text" id="expressionCustom" placeholder="추가 디테일" style="margin-top:5px;"></div>
+                    <div class="option-group"><label>💡 조명</label><select id="lightingSelect"><option value="자연광">자연광</option><option value="아침 햇살">아침 햇살</option><option value="오후 햇살">오후 햇살</option><option value="실내 조명">실내 조명</option></select></div>
+                </div>
+                <div style="margin-top:15px;"><label style="font-size:0.85em;color:#555;">📝 추가 디테일 (한국어로 자유롭게 작성)</label><textarea id="customDetails" style="min-height:80px;margin-top:5px;" placeholder="예: 라이브 방송하는거처럼 배경은 어둡고 약간 방송용 조명을 킨듯한, 조명이 보이진 않지만"></textarea></div>
+                <button class="btn-generate" onclick="generateCustom()">🎨 프롬프트 생성</button>
+            </div>
+            
             <div class="card result-card" id="resultCard">
                 <h2>✨ 생성된 프롬프트</h2>
                 <div class="result-box"><button class="btn-copy" onclick="copyPrompt()">📋 복사</button><div class="result-prompt" id="resultPrompt"></div></div>
@@ -201,11 +201,6 @@ The product should look like it belongs in the scene.</pre></div>
         }
         
         function useExample(el) { document.getElementById('simpleInput').value = el.textContent; }
-        function toggleOptions() {
-            const opt = document.getElementById('detailedOptions');
-            opt.classList.toggle('show');
-            document.querySelector('.options-toggle').textContent = opt.classList.contains('show') ? '⚙️ 상세 옵션 닫기' : '⚙️ 상세 옵션';
-        }
         
         async function generateSimple() {
             const input = document.getElementById('simpleInput').value.trim();
