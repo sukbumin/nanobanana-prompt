@@ -1,13 +1,17 @@
 from flask import Flask, render_template, request, jsonify
 import re
+import os
 import google.generativeai as genai
 
 app = Flask(__name__)
 
-# Gemini API 설정
-GEMINI_API_KEY = "AIzaSyB5yoJCBgsGcdw7WcSDC3Dss3SFjEPVY8c"
-genai.configure(api_key=GEMINI_API_KEY)
-gemini_model = genai.GenerativeModel('gemini-2.0-flash')
+# Gemini API 설정 (환경변수에서 가져오기)
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+    gemini_model = genai.GenerativeModel('gemini-2.0-flash')
+else:
+    gemini_model = None
 
 # 나이대 매핑
 AGE_MAPPING = {
