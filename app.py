@@ -1,7 +1,13 @@
 from flask import Flask, render_template, request, jsonify
 import re
+import google.generativeai as genai
 
 app = Flask(__name__)
+
+# Gemini API 설정
+GEMINI_API_KEY = "AIzaSyB5yoJCBgsGcdw7WcSDC3Dss3SFjEPVY8c"
+genai.configure(api_key=GEMINI_API_KEY)
+gemini_model = genai.GenerativeModel('gemini-2.0-flash')
 
 # 나이대 매핑
 AGE_MAPPING = {
@@ -599,37 +605,86 @@ def generate_video():
         'product': data.get('product', 'snack bag')
     }
     
-    # 기획안 파싱 (씬별로 분리)
-    scenes = []
-    current_scene = None
+    # Gemini AI로 프롬프트 생성
+    gender_en = "woman" if options['gender'] == '여성' else "man"
+    pronoun = "She" if gender_en == "woman" else "He"
     
-    lines = plan_text.strip().split('\n')
-    for line in lines:
-        line = line.strip()
-        if line.startswith('#') and any(c.isdigit() for c in line):
-            if current_scene:
-                scenes.append(current_scene)
-            scene_num = ''.join(filter(str.isdigit, line.split()[0] if line.split() else '1'))
-            current_scene = {'scene_num': int(scene_num) if scene_num else len(scenes) + 1, 'action': '', 'dialogue': ''}
-        elif current_scene:
-            if line.startswith('(') and line.endswith(')'):
-                current_scene['action'] += line[1:-1] + ' '
-            elif line:
-                current_scene['dialogue'] += line + ' '
+    system_prompt = f"""당신은 AI 영상 생성 프롬프트 전문가입니다.
+사용자가 한국어 기획안을 주면, 각 씬(#1, #2 등)별로 영상 생성 프롬프트를 만들어주세요.
+
+## 규칙:
+1. 각 씬마다 별도의 프롬프트 생성
+2. 프롬프트는 영어로 작성 (대사 부분만 한국어 유지)
+3. 한 줄당 최대 20단어
+4. 9:16 세로 영상 포맷
+
+## 대사 변환 규칙 (매우 중요!):
+- 숫자+개/명/봉지/마리 → 고유어 (1개→한 개, 3봉지→세 봉지)
+- 숫자+kg/g/%/원 → 한자어 (3kg→삼 킬로그램, 5000원→오천 원)
+- 1+1 → 원플원, 2+1 → 투플원
+- 웨하스 → 웨'하'스, 바닐라 → 바'닐'라
+- 떴다 → 떠따, 됐다 → 돼따, 했다 → 해따
+
+## 인물 정보:
+- 성별: Korean {gender_en}
+- 나이: {options['age']}
+- 제품: {options['product']}
+
+## 출력 형식 (각 씬마다):
+```
+[SCENE_1]
+Ultra-realistic cinematic 4K HDR 9:16 video.
+Korean {gender_en}, age {options['age']}, from the reference image.
+Identical face, hairstyle, outfit, and background.
+
+(여기에 액션/카메라 워크 설명 - 영어로)
+
+{pronoun} speaks naturally in Korean:
+"(변환된 한국어 대사)"
+
+Natural body language throughout.
+Bright, clean lighting.
+
+No subtitles, on-screen text, music, background music, sound effects, or audio effects.
+Full 9:16 vertical format.
+[/SCENE_1]
+```
+
+기획안의 괄호() 안 내용은 액션/연출 지시이고, 나머지는 대사입니다.
+액션은 영어로 자연스럽게 변환하세요 (예: "뛰어들어온다" → "runs into frame energetically").
+"""
+
+    user_prompt = f"다음 기획안을 씬별 영상 프롬프트로 변환해주세요:\n\n{plan_text}"
     
-    if current_scene:
-        scenes.append(current_scene)
-    
-    # 각 씬별 프롬프트 생성
-    prompts = []
-    for scene in scenes:
-        prompt = generate_video_prompt(scene, options)
-        prompts.append({
-            'scene_num': scene['scene_num'],
-            'prompt': prompt
-        })
-    
-    return jsonify({'prompts': prompts})
+    try:
+        response = gemini_model.generate_content([
+            {"role": "user", "parts": [system_prompt + "\n\n" + user_prompt]}
+        ])
+        
+        ai_response = response.text
+        
+        # 씬별로 파싱
+        prompts = []
+        scene_pattern = r'\[SCENE_(\d+)\](.*?)\[/SCENE_\d+\]'
+        matches = re.findall(scene_pattern, ai_response, re.DOTALL)
+        
+        if matches:
+            for scene_num, content in matches:
+                prompts.append({
+                    'scene_num': int(scene_num),
+                    'prompt': content.strip()
+                })
+        else:
+            # 파싱 실패시 전체 응답 반환
+            prompts.append({
+                'scene_num': 1,
+                'prompt': ai_response
+            })
+        
+        return jsonify({'prompts': prompts, 'success': True})
+        
+    except Exception as e:
+        return jsonify({'error': str(e), 'success': False}), 500
 
 
 @app.route('/translate', methods=['POST'])

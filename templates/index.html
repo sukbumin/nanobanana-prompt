@@ -311,15 +311,35 @@ The product should look like it belongs in the scene.</pre></div>
         async function generateVideo() {
             const plan = document.getElementById('videoPlan').value.trim();
             if (!plan) return alert('기획안을 입력해주세요!');
+            
+            // 로딩 표시
+            const btn = document.querySelector('#tab-video .btn-generate');
+            const originalText = btn.textContent;
+            btn.textContent = '🔄 AI가 생성 중...';
+            btn.disabled = true;
+            
             const data = {
                 plan,
                 gender: document.getElementById('videoGender').value,
                 age: document.getElementById('videoAge').value,
                 product: document.getElementById('videoProduct').value
             };
-            const res = await fetch('/generate_video', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
-            const result = await res.json();
-            showVideoResults(result.prompts);
+            
+            try {
+                const res = await fetch('/generate_video', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
+                const result = await res.json();
+                
+                if (result.success) {
+                    showVideoResults(result.prompts);
+                } else {
+                    alert('오류: ' + (result.error || '알 수 없는 오류'));
+                }
+            } catch (e) {
+                alert('네트워크 오류: ' + e.message);
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
         }
         
         function showVideoResults(prompts) {
