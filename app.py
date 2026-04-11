@@ -481,6 +481,11 @@ def generate_prompt(parsed_data, custom_details=""):
     if custom_details:
         lines.insert(-1, translate_korean_to_english(custom_details))
     
+    # 마지막에 한국어 안내 문구 추가
+    gender_kr = "여자" if gender == "woman" else "남자"
+    lines.append("")
+    lines.append(f"위 프롬프트를 참고해서 한국 {gender_kr} 이미지로 생성해줘")
+    
     prompt = "\n".join(lines)
     return prompt
 
@@ -620,6 +625,7 @@ def generate_custom():
                 detail_parts.append(f"기타: {custom_details}")
             
             detail_text = "\n".join(detail_parts)
+            gender_kr = "여자" if gender_en == "woman" else "남자"
             
             ai_prompt = f"""AI 인플루언서 이미지 생성 프롬프트를 만들어주세요.
 
@@ -643,6 +649,7 @@ def generate_custom():
 4. 마지막에 반드시 "vertical 9:16 aspect ratio for Instagram Reels" 포함
 5. 피부는 자연스럽게 (natural skin texture with visible pores, NOT plastic or CGI)
 6. photo-realistic, high-resolution 포함
+7. 맨 마지막 줄에 반드시 "위 프롬프트를 참고해서 한국 {gender_kr} 이미지로 생성해줘" 추가
 
 프롬프트만 출력하세요 (설명 없이):"""
 
